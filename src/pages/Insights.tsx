@@ -1,12 +1,13 @@
-import { ArrowRight, MapPin, Sparkles } from 'lucide-react'
+import { ArrowRight, ClipboardCheck, MapPin, Sparkles } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Button, Card, Page, PageHead, Pill, Progress, Section, Segmented, Stat, cx } from '../components/ui'
 import { ANALYTICS_QUESTIONS } from '../data/analyticsQuestions'
 import { KPI_SETS } from '../data/kpiSets'
+import { CAPAS, capaForJob } from '../data/capas'
 import { openCora } from '../lib/notifications'
 
-type ReportPage = 'overview' | 'kpis' | 'coldchain' | 'risk' | 'sustainability' | 'benchmark'
+type ReportPage = 'overview' | 'kpis' | 'coldchain' | 'risk' | 'sustainability' | 'benchmark' | 'spend'
 const PAGES: { id: ReportPage; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'kpis', label: 'Live KPIs' },
@@ -14,6 +15,7 @@ const PAGES: { id: ReportPage; label: string }[] = [
   { id: 'risk', label: 'Risk' },
   { id: 'sustainability', label: 'Sustainability' },
   { id: 'benchmark', label: 'Benchmark' },
+  { id: 'spend', label: 'Spend and value' },
 ]
 const isPage = (s: string | null): s is ReportPage => !!s && PAGES.some((p) => p.id === s)
 
@@ -26,6 +28,23 @@ const MONTHS = ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', '
 const RADIO = [118, 122, 126, 131, 136, 140, 146, 151, 157, 163, 170, 178]
 const LAB = [122, 124, 127, 129, 132, 134, 136, 138, 139, 141, 143, 142]
 const CLIN = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18]
+
+const SPEND = [78, 82, 85, 88, 92, 95, 98, 103, 106, 112, 118, 124]
+function SpendChart() {
+  const W = 640, H = 200, padL = 36, padB = 26, padT = 10, max = 140
+  const innerW = W - padL - 10, innerH = H - padB - padT
+  const x = (i: number) => padL + (i / (SPEND.length - 1)) * innerW
+  const y = (v: number) => padT + innerH - (v / max) * innerH
+  const pts = SPEND.map((v, i) => `${x(i)},${y(v)}`).join(' ')
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label="Monthly spend trend">
+      {[0, 70, 140].map((t) => (<g key={t}><line x1={padL} x2={W - 10} y1={y(t)} y2={y(t)} stroke="#F0EFF5" /><text x={padL - 8} y={y(t) + 4} textAnchor="end" style={{ fontSize: 11, fill: '#9896A8', fontFamily: 'Inter, sans-serif' }}>{t}</text></g>))}
+      <polygon points={`${x(0)},${y(0)} ${pts} ${x(SPEND.length - 1)},${y(0)}`} fill={PURPLE} opacity={0.08} />
+      <polyline points={pts} fill="none" stroke={PURPLE} strokeWidth={2.5} strokeLinejoin="round" />
+      {SPEND.map((v, i) => (<g key={i}><circle cx={x(i)} cy={y(v)} r={3} fill={PURPLE} /><text x={x(i)} y={H - 8} textAnchor="middle" style={{ fontSize: 11, fill: '#6B6880', fontFamily: 'Inter, sans-serif' }}>{MONTHS[i]}</text></g>))}
+    </svg>
+  )
+}
 
 function VolumeChart() {
   const W = 640, H = 240, padL = 36, padB = 28, padT = 10
@@ -244,10 +263,25 @@ export default function Insights() {
                 ['261396071CL', 'LHR → GRU', '8.2 °C for 27 minutes', 'Under review', 'warn'],
                 ['261402288CL', 'LHR → VCP', '8.4 °C for 12 minutes', 'Closed', 'ok'],
                 ['261405510CL', 'LHR → GRU', 'Logger swap pending', 'Pending', 'warn'],
-              ] as [string, string, string, string, 'ok' | 'warn'][]).map(([job, lane, what, status, tone]) => (
-                <Link key={job} to={`/shipments?job=${job}`} className="list-row click" style={{ color: 'inherit' }}>
-                  <div className="grow"><div className="title">{job} <span className="muted" style={{ fontWeight: 400 }}>· {lane}</span></div><div className="meta">{what}</div></div>
-                  <Pill tone={tone} dot>{status}</Pill>
+              ] as [string, string, string, string, 'ok' | 'warn'][]).map(([job, lane, what, status, tone]) => {
+                const capa = capaForJob(job)
+                return (
+                  <div key={job} className="list-row">
+                    <div className="grow"><div className="title">{job} <span className="muted" style={{ fontWeight: 400 }}>· {lane}</span></div><div className="meta">{what}{capa ? <> · <Link to={`/documents?capa=${capa.id}`} className="strong"><ClipboardCheck size={12} style={{ verticalAlign: -2 }} /> {capa.id} · {capa.status}</Link></> : ''}</div></div>
+                    <Pill tone={tone} dot>{status}</Pill>
+                    <Link to={`/shipments?job=${job}`} className="btn ghost xs hide-m">Shipment</Link>
+                  </div>
+                )
+              })}
+            </Card>
+          </Section>
+          <Section title="Investigations (CAPA)" action={<Link to="/documents?kind=capa">Document library <ArrowRight size={14} style={{ verticalAlign: -2 }} /></Link>}>
+            <Card pad={false} style={{ overflow: 'hidden' }}>
+              {CAPAS.filter((c) => c.type === 'Temperature excursion').map((c) => (
+                <Link key={c.id} to={`/documents?capa=${c.id}`} className="list-row click" style={{ color: 'inherit' }}>
+                  <span className={cx('icon-wrap', c.status === 'Closed' ? 'ok' : 'warn')}><ClipboardCheck size={18} /></span>
+                  <div className="grow"><div className="title">{c.id} <span className="muted" style={{ fontWeight: 400 }}>· {c.title}</span></div><div className="meta">Job {c.jobNumber} · {c.lane} · target close {c.targetClose}</div></div>
+                  <Pill tone={c.status === 'Closed' ? 'ok' : c.status === 'Effectiveness check' ? 'info' : 'warn'} dot>{c.status}</Pill>
                   <ArrowRight size={16} className="faint hide-m" />
                 </Link>
               ))}
@@ -277,6 +311,19 @@ export default function Insights() {
                 </div>
               ))}
             </Card>
+          </Section>
+          <Section title="Failed and late deliveries" action={<Link to="/documents?kind=capa">All investigations <ArrowRight size={14} style={{ verticalAlign: -2 }} /></Link>}>
+            <Card pad={false} style={{ overflow: 'hidden' }}>
+              {CAPAS.filter((c) => c.type !== 'Temperature excursion').map((c) => (
+                <Link key={c.id} to={`/documents?capa=${c.id}`} className="list-row click" style={{ color: 'inherit' }}>
+                  <span className={cx('icon-wrap', c.status === 'Closed' ? 'ok' : 'bad')}><ClipboardCheck size={18} /></span>
+                  <div className="grow"><div className="title">{c.type} <span className="muted" style={{ fontWeight: 400 }}>· {c.lane}</span></div><div className="meta">Job {c.jobNumber}{c.study ? ` · ${c.study}` : ''} · {c.id} · root cause: {c.rootCauseCategory}</div></div>
+                  <Pill tone={c.status === 'Closed' ? 'ok' : 'warn'} dot>{c.status}</Pill>
+                  <ArrowRight size={16} className="faint hide-m" />
+                </Link>
+              ))}
+            </Card>
+            <div className="small muted" style={{ marginTop: 10 }}>Every failed or late delivery opens a CAPA investigation with root cause, corrective and preventive actions and an effectiveness check, retained in the document library.</div>
           </Section>
         </>
       )}
@@ -312,6 +359,58 @@ export default function Insights() {
             <div className="small muted" style={{ marginBottom: 14 }}>Peer benchmarking across the Cencora World Courier network</div>
             <Compare rows={[['OTIF', 97.4, 95.1], ['Temperature compliance', 99.2, 97.8], ['Invoice accuracy', 99.1, 96.0]]} />
           </Card>
+        </>
+      )}
+
+      {page === 'spend' && (
+        <>
+          <div className="grid cols-4">
+            <Stat label="Spend YTD" value="$1.20M" delta="+22% vs last year, volume +14.6%" />
+            <Stat label="Cost per shipment" value="$1,412" delta="−3.1% vs last quarter" tone="ok" />
+            <Stat label="Invoice accuracy" value="99.1%" delta="First-time match to PO, 12 months" tone="ok" />
+            <Stat label="Outstanding balance" value="$111,099" delta="2 need attention" tone="warn" />
+          </div>
+          <div className="grid cols-2" style={{ marginTop: 16 }}>
+            <Card>
+              <div className="strong">Spend by service line</div>
+              <div className="small muted" style={{ marginBottom: 14 }}>Invoiced this quarter · {`$`}170,509</div>
+              <div className="stack" style={{ gap: 12 }}>
+                {([['Radiopharma', 92330, 'Critical tier + Data Analytics'], ['Central Lab & Biostorage', 61710, 'Optimised bundle'], ['Clinical Supply Logistics', 16469, 'Critical and Optimised, from October']] as [string, number, string][]).map(([n, v, d]) => (
+                  <div key={n}>
+                    <div className="row between small"><span className="strong">{n}</span><span className="mono">${v.toLocaleString('en-US')}</span></div>
+                    <div className="tiny muted" style={{ marginBottom: 6 }}>{d}</div>
+                    <Progress value={(v / 92330) * 100} />
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card>
+              <div className="strong">Spend trend</div>
+              <div className="small muted" style={{ marginBottom: 10 }}>Monthly invoiced spend, last 12 months (USD k)</div>
+              <SpendChart />
+            </Card>
+          </div>
+          <div className="grid cols-2" style={{ marginTop: 16 }}>
+            <Card>
+              <div className="strong">Value delivered</div>
+              <div className="small muted" style={{ marginBottom: 12 }}>Savings and avoided cost, year to date</div>
+              <div className="stack" style={{ gap: 8 }}>
+                {([['Consolidated milk runs on EU road legs', '$48,200', 'ok'], ['Customs holds avoided through pre-clearance', '$21,400', 'ok'], ['Disputes resolved without credit', '$9,600', 'ok'], ['Radiopharma volume 18% above commitment', 'Tier review could reduce unit price 4–6%', 'warn']] as [string, string, 'ok' | 'warn'][]).map(([l, v, t]) => (
+                  <div key={l} className="row between small" style={{ gap: 12 }}><span>{l}</span><Pill tone={t}>{v}</Pill></div>
+                ))}
+              </div>
+            </Card>
+            <Card>
+              <div className="strong">Billing health</div>
+              <div className="small muted" style={{ marginBottom: 12 }}>How invoices are moving through your approval</div>
+              <div className="stack" style={{ gap: 8 }}>
+                {([['Invoices auto-matched to approved terms', '11 of 12'], ['Average days to approve', '6.4 days'], ['Supplementary invoices on hold', '1 (INV-26-0887)'], ['Credits applied this quarter', '1 · $1,250']] as [string, string][]).map(([l, v]) => (
+                  <div key={l} className="row between small"><span className="muted">{l}</span><span className="strong">{v}</span></div>
+                ))}
+              </div>
+              <div style={{ marginTop: 14 }}><Button size="sm" variant="secondary" to="/financials">Open Financials</Button></div>
+            </Card>
+          </div>
         </>
       )}
 

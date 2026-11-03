@@ -9,12 +9,6 @@ import { SERVICE_LINES } from '../data/serviceLines'
 import { openCora } from '../lib/notifications'
 import { downloadRateCardPdf, downloadSchedulePdf } from '../lib/pdf'
 
-const BASE = import.meta.env.BASE_URL
-const RECOMMENDED: { id: string; title: string; text: string; img: string }[] = [
-  { id: 'cellgene', title: 'Cell & Gene Therapies', text: 'Specialist support for time-critical, patient-specific therapies.', img: 'lab.jpg' },
-  { id: 'warehouse', title: 'Depot and warehouse services', text: 'Connect storage, inventory and distribution to your studies.', img: 'plane.jpg' },
-  { id: 'commercial', title: 'Commercial Supply Logistics', text: 'Finished products, distribution and replenishment, regulated and non-regulated.', img: 'scientist.jpg' },
-]
 
 export default function Solutions() {
   const [params] = useSearchParams()
@@ -27,24 +21,9 @@ export default function Solutions() {
     <Page>
       <PageHead title="Explore Solutions" sub="More ways to simplify your healthcare supply chain." tools={<><Button variant="secondary" onClick={downloadRateCardPdf} icon={<Download size={16} />}>Rate card</Button><Button to="/book?mode=quote">Request a quote</Button></>} />
 
-      <div className="tip"><Sparkles size={16} />Already moving laboratory samples? We can help with more of your study. <button className="link" style={{ fontStyle: 'normal', marginLeft: 4 }} onClick={() => openCora('What else can you help with for my studies?')}>Ask Cora</button></div>
+      <div className="tip"><Sparkles size={16} />Already moving laboratory samples? We can help with more of your study. <button className="link" style={{ fontStyle: 'normal', marginLeft: 4 }} onClick={() => openCora('What else can you help with for my studies?')}>Ask Cora</button><a href="#/add-service" style={{ marginLeft: 'auto', fontStyle: 'normal', fontWeight: 600 }}>View all services <ArrowRight size={14} style={{ verticalAlign: -2 }} /></a></div>
 
-      <Section title="Recommended for your programme" action={<a href="#/add-service">View all services <ArrowRight size={14} style={{ verticalAlign: -2 }} /></a>}>
-        <div className="grid cols-3">
-          {RECOMMENDED.map((r) => (
-            <div key={r.id} className="card photo-card">
-              <div className="ph" style={{ backgroundImage: `url(${BASE}img/${r.img})` }} role="img" aria-label={r.title} />
-              <div className="ph-body">
-                <h3>{r.title}</h3>
-                <p>{r.text}</p>
-                <a href={`#/add-service?service=${r.id}`}>Explore service <ArrowRight size={15} /></a>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <Section title="Your active solutions" action={<span className="small muted">{SCHEDULES.length} schedules under MSA-AZ-2026 v3.0</span>}>
+      <Section title="Your active solutions" action={<span className="small muted">{SCHEDULES.length} schedules under MSA-AZ-2026 v3.0 · <a href="#/documents?kind=commercial">Document library</a></span>}>
         <div className="stack" style={{ gap: 14 }}>
           {SCHEDULES.map((s) => {
             const tone = s.utilisation > 110 ? 'warn' : s.utilisation > 80 ? 'ok' : undefined

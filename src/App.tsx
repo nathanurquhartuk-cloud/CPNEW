@@ -4,6 +4,7 @@ import { useAuth } from './lib/auth'
 import Account from './pages/Account'
 import AddSolution from './pages/AddSolution'
 import BookShipment from './pages/BookShipment'
+import Documents from './pages/Documents'
 import Financials from './pages/Financials'
 import Insights from './pages/Insights'
 import Inventory from './pages/Inventory'
@@ -37,6 +38,7 @@ export default function App() {
             <Route path="/analytics" element={<Insights />} />
             <Route path="/solutions" element={<Solutions />} />
             <Route path="/agreements" element={<Solutions />} />
+            <Route path="/documents" element={<Documents />} />
             <Route path="/support" element={<Support />} />
             <Route path="/account" element={<Account />} />
             <Route path="/book" element={<BookShipment />} />

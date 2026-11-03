@@ -9,6 +9,7 @@ import { greeting, nowTime } from '../lib/dates'
 import { openActions, useNotifications } from '../lib/notifications'
 import { LOCALE_ACK, useSettings } from '../lib/settings'
 import { LOCALES, Locale, USER } from '../lib/user'
+import { Order, addHours, allOrders, fmtTime, fmtWhen, nextOrderRef, parseWhen, useOrders } from '../lib/orders'
 import CoraMark from './CoraMark'
 import { ACCOUNT_TEAM, BILLING_TEAM, CONTROL_TOWER, SpecialistOptions, SpecialistTeam } from './SpecialistContact'
 
@@ -17,7 +18,10 @@ type Msg = { id: number; who: 'bot' | 'user'; text: string; actions?: Action[]; 
 
 const opening = () => `${greeting()}, I'm Cora, your digital concierge.\n\nProactive shipment intelligence has re-routed job 261408871CL via Berlin ahead of a storm cell over Frankfurt; no action is needed. Also open today: a temperature excursion on job 261396071CL and two high-risk departures on Thursday. How can I help today?`
 
-const SUGGESTIONS = ['Explain the re-route', 'What needs my attention?', 'Track shipment 261396071CL', 'Which invoices are due?', 'Switch to German', 'Speak with a specialist']
+const SUGGESTIONS = ['Repeat shipment for Radiopharma from London to Porto Alegre', 'Explain the re-route', 'What needs my attention?', 'Track shipment 261396071CL', 'Which invoices are due?', 'Switch to German', 'Speak with a specialist']
+
+type Flow = { base: Order; step: 'pickup' | 'delivery' | 'packaging' | 'handling'; pickup?: Date; delivery?: Date; packaging?: string; handling?: string }
+const HANDLING: Record<string, string> = { 'white i': 'White I', 'white 1': 'White I', 'white': 'White I', 'yellow ii': 'Yellow II', 'yellow 2': 'Yellow II', 'yellow iii': 'Yellow III', 'yellow 3': 'Yellow III', 'yellow': 'Yellow II' }
 
 export default function Cora() {
   const nav = useNavigate()
@@ -28,6 +32,8 @@ export default function Cora() {
   const items = useNotifications((s) => s.items)
   const setLocale = useSettings((s) => s.setLocale)
   const seq = useRef(2)
+  const flow = useRef<Flow | null>(null)
+  const { created, addOrder } = useOrders()
 
   useEffect(() => {
     const on = (e: Event) => { setOpen(true); const p = (e as CustomEvent).detail?.prompt; if (p) setTimeout(() => reply(p), 50) }
@@ -42,6 +48,53 @@ export default function Cora() {
   function answer(q: string): Omit<Msg, 'id' | 'at' | 'who'> {
     const s = q.toLowerCase()
     const go = (label: string, to: string): Action => ({ label, to })
+    // ----- guided flow: repeat a shipment -----
+    if (flow.current) {
+      const f = flow.current
+      if (/\b(cancel|stop|never mind|forget it)\b/.test(s)) { flow.current = null; return { text: 'No problem, nothing has been placed. Say "repeat shipment" whenever you are ready.' } }
+      if (f.step === 'pickup') {
+        const w = parseWhen(q)
+        if (!w) return { text: 'I did not catch a date and time. Give me the strict pick-up as a date and time, for example "Thu 6 Nov 09:00" or "tomorrow 9am".' }
+        f.pickup = w.date; f.step = 'delivery'
+        return { text: `Pick-up window set: ${fmtWhen(w.date)}–${fmtTime(addHours(w.date, 1))}${w.assumedTime ? ' (no time given, so I have assumed 09:00)' : ''}. Strict pick-up at ${fmtTime(w.date)} with a one-hour window after it.\n\nWhen do you need it delivered?` }
+      }
+      if (f.step === 'delivery') {
+        const w = parseWhen(q, f.pickup)
+        if (!w) return { text: 'Give me the delivery deadline as a date and time, for example "Fri 7 Nov 15:00".' }
+        if (f.pickup && w.date.getTime() <= f.pickup.getTime()) return { text: `That is before the pick-up (${fmtWhen(f.pickup)}). When do you need it delivered?` }
+        f.delivery = w.date; f.step = 'packaging'
+        return { text: `Delivery window set: ${fmtWhen(addHours(w.date, -1))}–${fmtTime(w.date)}, one hour before your ${fmtTime(w.date)} deadline.\n\nIs it your own packaging, or would you like us to supply packaging?`, actions: [{ label: 'My own packaging', run: () => reply('My own packaging') }, { label: 'Please supply packaging', run: () => reply('Please supply packaging') }] }
+      }
+      if (f.step === 'packaging') {
+        if (/\b(own|ours|mine|my )/.test(s)) f.packaging = 'Customer packaging'
+        else if (/\b(supply|you|yours|world courier|provide|please)\b/.test(s)) f.packaging = 'World Courier supplies qualified Type A packaging'
+        else return { text: 'Shall I note your own packaging, or would you like us to supply packaging?', actions: [{ label: 'My own packaging', run: () => reply('My own packaging') }, { label: 'Please supply packaging', run: () => reply('Please supply packaging') }] }
+        f.step = 'handling'
+        return { text: `Noted: ${f.packaging.toLowerCase()}.\n\nWhat is the handling type: White I, Yellow II or Yellow III?`, actions: [{ label: 'White I', run: () => reply('White I') }, { label: 'Yellow II', run: () => reply('Yellow II') }, { label: 'Yellow III', run: () => reply('Yellow III') }] }
+      }
+      if (f.step === 'handling') {
+        const key = Object.keys(HANDLING).sort((a, b) => b.length - a.length).find((k) => s.includes(k))
+        if (!key) return { text: 'Please choose the radioactive handling category: White I, Yellow II or Yellow III.', actions: [{ label: 'White I', run: () => reply('White I') }, { label: 'Yellow II', run: () => reply('Yellow II') }, { label: 'Yellow III', run: () => reply('Yellow III') }] }
+        f.handling = HANDLING[key]
+        const ref = nextOrderRef()
+        const pickup = `${fmtWhen(f.pickup!)}–${fmtTime(addHours(f.pickup!, 1))}`
+        const delivery = `${fmtWhen(addHours(f.delivery!, -1))}–${fmtTime(f.delivery!)}`
+        addOrder({ ...f.base, id: ref, kind: 'Direct', status: 'Booked', when: `Pick-up ${fmtWhen(f.pickup!)}`, note: `Repeat of ${f.base.id} · pick-up ${pickup} · delivery ${delivery} · ${f.packaging} · handling ${f.handling}`, jobNumber: undefined, windows: { pickup, delivery }, packaging: f.packaging, handling: f.handling, repeatOf: f.base.id } as Order)
+        flow.current = null
+        return { text: `Shipment placed.\n\n${ref} · ${f.base.serviceLine} · ${f.base.tier} tier\n${f.base.route}\nPick-up ${pickup}\nDelivery ${delivery}\n${f.packaging} · handling ${f.handling}\n\nPriced from your rate card at ${f.base.value}, the same as ${f.base.id}. The job number and label follow within minutes.`, actions: [go('Open the shipment', `/shipments?ref=${ref}`), go('All shipments', '/shipments')] }
+      }
+    }
+    if (/\brepeat\b.*\b(shipment|order|booking|job)\b|\b(same|another) (shipment|order) again\b|\bre-?order\b/.test(s)) {
+      const orders = allOrders(created).filter((o) => o.kind !== 'Quote')
+      const svc = /radio/.test(s) ? 'Radiopharma' : /central|lab|biostor/.test(s) ? 'Central Lab' : /clinical|site|study/.test(s) ? 'Clinical Supply' : /cell|gene/.test(s) ? 'Cell & Gene' : ''
+      const m = s.match(/from\s+([a-z\s]+?)\s+to\s+([a-z\s]+?)(?:$|[,.?!]|\s+on\b|\s+for\b)/)
+      const key = (x: string) => x.trim().split(/\s+/).map((w) => w.slice(0, 4)).filter((w) => w.length > 2)
+      const score = (o: Order) => (svc && o.serviceLine.toLowerCase().includes(svc.toLowerCase().split(' ')[0]) ? 2 : 0) + (m ? key(m[1]).filter((w) => o.route.toLowerCase().includes(w)).length + key(m[2]).filter((w) => o.route.toLowerCase().includes(w)).length * 2 : 0)
+      const base = [...orders].sort((a, b) => score(b) - score(a))[0]
+      if (!base || score(base) === 0) return { text: 'Which shipment would you like to repeat? Tell me the service line and the lane, for example "repeat shipment for Radiopharma from London to Porto Alegre", or give me an order reference.', actions: [go('All shipments', '/shipments')] }
+      flow.current = { base, step: 'pickup' }
+      return { text: `I will repeat ${base.id}: ${base.route}, ${base.serviceLine}, ${base.tier} tier${base.addOns?.length ? ` with ${base.addOns.join(', ')}` : ''}.\n\nFirst, what is the strict pick-up date and time?` }
+    }
     // language
     const loc = LOCALES.find((l) => s.includes(l.label.toLowerCase().split(' ')[0]) || s.includes(l.native.toLowerCase()) || (l.id === 'zh-CN' && /chinese|mandarin|中文/.test(s)))
     if (loc && /language|switch|change|speak|翻译|sprache|idioma|lingua|中文/.test(s)) { setLocale(loc.id as Locale); return { text: LOCALE_ACK[loc.id as Locale], actions: [go('Language settings', '/account?tab=settings')] } }

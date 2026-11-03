@@ -1,16 +1,17 @@
-import { AlertTriangle, ArrowRight, Battery, Clock, Download, FileText, MapPin, Package, Plane, Search, Ship, Thermometer, Truck } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Battery, ClipboardCheck, Clock, Download, FileText, MapPin, Package, Plane, Search, Ship, Thermometer, Truck } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { SpecialistOptions } from '../components/SpecialistContact'
 import { Button, Drawer, Empty, Expand, KV, Page, PageHead, Pill, Section, Segmented, statusTone } from '../components/ui'
 import { CLUSTERS, Cluster, WorldMap } from '../components/WorldMap'
 import { INVOICES } from '../data/invoices'
 import { JOBS } from '../data/jobs'
-import { ORDERS } from '../data/orders'
+import { capaForJob } from '../data/capas'
+import { Order as StoreOrder, allOrders, useOrders } from '../lib/orders'
 import { fmtDayMonthYear } from '../lib/dates'
 import { downloadInvoicePdf, downloadPodPdf, downloadTemperaturePdf, invoiceTotal } from '../lib/pdf'
 
-type Order = (typeof ORDERS)[number] & { jobNumber?: string; study?: string; addOns?: string[]; expires?: string }
+type Order = StoreOrder
 type Job = (typeof JOBS)[number]
 type Filter = 'all' | 'transit' | 'attention' | 'delivered' | 'quotes'
 
@@ -24,26 +25,32 @@ export default function Shipments({ live = false }: { live?: boolean }) {
   const [params, setParams] = useSearchParams()
   const [filter, setFilter] = useState<Filter>('all')
   const [q, setQ] = useState('')
+  const [service, setService] = useState('all')
+  const created = useOrders((s) => s.created)
+  const ALL = useMemo(() => allOrders(created), [created])
+  const SERVICES = useMemo(() => Array.from(new Set(ALL.map((o) => o.serviceLine))), [ALL])
   const [sel, setSel] = useState<Order | null>(null)
   const [cluster, setCluster] = useState<Cluster | null>(null)
   const view = live ? 'live' : 'list'
 
   useEffect(() => {
     const ref = params.get('ref'); const job = params.get('job') || params.get('orderNumber')
-    const o = ref ? ORDERS.find((x) => x.id === ref) : job ? ORDERS.find((x) => (x as Order).jobNumber === job) : null
-    if (o) setSel(o as Order)
-  }, [params])
+    const o = ref ? ALL.find((x) => x.id === ref) : job ? ALL.find((x) => x.jobNumber === job) : null
+    if (o) setSel(o)
+  }, [params, ALL])
 
-  const rows = useMemo(() => (ORDERS as Order[]).filter((o) => {
+  const rows = useMemo(() => ALL.filter((o) => {
+    if (service !== 'all' && o.serviceLine !== service) return false
     if (filter === 'transit' && !/transit|booked|processing/i.test(o.status)) return false
     if (filter === 'attention' && !hasIssue(o)) return false
     if (filter === 'delivered' && !/delivered/i.test(o.status)) return false
     if (filter === 'quotes' && o.kind !== 'Quote') return false
     if (q && !`${o.id} ${o.jobNumber ?? ''} ${o.route} ${o.serviceLine} ${o.study ?? ''}`.toLowerCase().includes(q.toLowerCase())) return false
     return true
-  }), [filter, q])
+  }), [filter, q, service, ALL])
 
-  const counts = { all: ORDERS.length, transit: ORDERS.filter((o) => /transit|booked|processing/i.test(o.status)).length, attention: (ORDERS as Order[]).filter(hasIssue).length, delivered: ORDERS.filter((o) => /delivered/i.test(o.status)).length, quotes: ORDERS.filter((o) => o.kind === 'Quote').length }
+  const scoped = service === 'all' ? ALL : ALL.filter((o) => o.serviceLine === service)
+  const counts = { all: scoped.length, transit: scoped.filter((o) => /transit|booked|processing/i.test(o.status)).length, attention: scoped.filter(hasIssue).length, delivered: scoped.filter((o) => /delivered/i.test(o.status)).length, quotes: scoped.filter((o) => o.kind === 'Quote').length }
   const alerts = JOBS.filter((j) => j.isOpenAlert)
 
   return (
@@ -54,6 +61,10 @@ export default function Shipments({ live = false }: { live?: boolean }) {
         <Segmented value={view} onChange={(v) => nav(v === 'live' ? '/shipments/live' : '/shipments')} options={[{ id: 'list', label: 'All shipments' }, { id: 'live', label: 'Live map' }]} />
         {view === 'list' && (
           <div className="row" style={{ gap: 10, flex: 1, justifyContent: 'flex-end' }}>
+            <select className="select" style={{ width: 'auto', height: 38, maxWidth: 240 }} value={service} onChange={(e) => setService(e.target.value)} aria-label="Filter by service line">
+              <option value="all">All service lines</option>
+              {SERVICES.map((sv) => <option key={sv} value={sv}>{sv}</option>)}
+            </select>
             <div style={{ position: 'relative', maxWidth: 280, flex: 1 }}>
               <Search size={15} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--faint)' }} />
               <input className="input" style={{ paddingLeft: 34, height: 38 }} placeholder="Job, order, route or study" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Filter shipments" />
@@ -106,7 +117,7 @@ export default function Shipments({ live = false }: { live?: boolean }) {
           <Section title="Open alerts" action={<span className="small muted">Sorted by delivery date</span>}>
             <div className="card" style={{ overflow: 'hidden' }}>
               {alerts.map((j) => {
-                const o = (ORDERS as Order[]).find((x) => x.jobNumber === j.number)
+                const o = ALL.find((x) => x.jobNumber === j.number)
                 const top = j.issues[0]
                 return (
                   <div key={j.number} className="list-row click" onClick={() => o ? setSel(o) : nav(`/shipments?job=${j.number}`)}>
@@ -134,6 +145,7 @@ function ShipmentDrawer({ order: o, onClose }: { order: Order; onClose: () => vo
   const inv = invoiceFor(o)
   const [spec, setSpec] = useState(false)
   const delivered = /delivered/i.test(o.status)
+  const capa = capaForJob(o.jobNumber)
   return (
     <Drawer title={o.route} sub={`${o.id}${o.jobNumber ? ` · job ${o.jobNumber}` : ''} · ${o.serviceLine}`} onClose={onClose} badge={<Pill tone={statusTone(o.status)} dot>{o.status}</Pill>}
       footer={<>
@@ -150,7 +162,7 @@ function ShipmentDrawer({ order: o, onClose }: { order: Order; onClose: () => vo
       </div>
 
       <Expand title="Booking" open>
-        <KV rows={[['Reference', o.id], ['Type', `${o.kind} order`], ['Service', `${o.serviceLine} · ${o.tier} tier`], ['Add-ons', o.addOns?.length ? o.addOns.join(', ') : 'None'], ...(o.study ? [['Study', o.study] as [string, string]] : []), ['Route', o.route], ['Value', o.value]]} />
+        <KV rows={[['Reference', o.id], ['Type', `${o.kind} order${o.repeatOf ? ` · repeat of ${o.repeatOf}` : ''}`], ['Service', `${o.serviceLine} · ${o.tier} tier`], ['Add-ons', o.addOns?.length ? o.addOns.join(', ') : 'None'], ...(o.study ? [['Study', o.study] as [string, string]] : []), ['Route', o.route], ...(o.windows ? [['Pick-up window', o.windows.pickup] as [string, string], ['Delivery window', o.windows.delivery] as [string, string]] : []), ...(o.packaging ? [['Packaging', o.packaging] as [string, string]] : []), ...(o.handling ? [['Handling', `${o.handling} (radioactive category)`] as [string, string]] : []), ['Value', o.value]]} />
       </Expand>
 
       {j && (
@@ -179,6 +191,16 @@ function ShipmentDrawer({ order: o, onClose }: { order: Order; onClose: () => vo
             </div>
           ))}
           {inv && <div style={{ marginTop: 12 }}><Button size="sm" variant="secondary" onClick={() => downloadTemperaturePdf(inv)} icon={<Download size={15} />}>Temperature of record (PDF)</Button></div>}
+        </Expand>
+      )}
+
+      {capa && (
+        <Expand title="Investigation" open right={<Pill tone={capa.status === 'Closed' ? 'ok' : 'warn'}>{capa.status}</Pill>}>
+          <div className="card pad" style={{ padding: '12px 14px', background: 'var(--amber-soft)', borderColor: '#F1E0B8' }}>
+            <div className="row" style={{ gap: 8 }}><ClipboardCheck size={16} className="amber" /><span className="strong small">{capa.id} · {capa.type}</span></div>
+            <div className="small" style={{ marginTop: 6 }}>{capa.title}. Root cause: {capa.rootCauseCategory}.</div>
+            <div style={{ marginTop: 10 }}><Link to={`/documents?capa=${capa.id}`} className="btn secondary xs" onClick={onClose}>Open the CAPA report</Link></div>
+          </div>
         </Expand>
       )}
 

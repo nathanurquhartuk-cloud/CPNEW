@@ -1,4 +1,4 @@
-import { ArrowRight, FlaskConical, MapPin, Package, Receipt } from 'lucide-react'
+import { ArrowRight, FlaskConical, MapPin, Package, Receipt, Wallet } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import LaneReroute from '../components/LaneReroute'
 import CoraMark from '../components/CoraMark'
@@ -7,6 +7,13 @@ import { SCHEDULES } from '../data/schedules'
 import { fmtLong, greeting, today } from '../lib/dates'
 import { openActions, useNotifications } from '../lib/notifications'
 import { USER } from '../lib/user'
+
+const BASE = import.meta.env.BASE_URL
+export const RECOMMENDED: { id: string; title: string; text: string; img: string }[] = [
+  { id: 'cellgene', title: 'Cell & Gene Therapies', text: 'Specialist support for time-critical, patient-specific therapies.', img: 'lab.jpg' },
+  { id: 'warehouse', title: 'Depot and warehouse services', text: 'Connect storage, inventory and distribution to your studies.', img: 'plane.jpg' },
+  { id: 'commercial', title: 'Commercial Supply Logistics', text: 'Finished products, distribution and replenishment, regulated and non-regulated.', img: 'scientist.jpg' },
+]
 
 export default function Overview() {
   const [params] = useSearchParams()
@@ -34,10 +41,11 @@ export default function Overview() {
       </div>
 
       <Section title="What would you like to do?">
-        <div className="grid cols-3">
+        <div className="grid cols-4">
           <QuickAction icon={<Package size={28} strokeWidth={1.6} />} label="Book shipment" to="/book" />
           <QuickAction icon={<MapPin size={28} strokeWidth={1.6} />} label="Track shipment" to="/shipments/live" />
           <QuickAction icon={<FlaskConical size={28} strokeWidth={1.6} />} label="My studies" to="/studies" />
+          <QuickAction icon={<Wallet size={28} strokeWidth={1.6} />} label="My Financials" to="/financials" />
         </div>
       </Section>
 
@@ -57,6 +65,21 @@ export default function Overview() {
               <span className="small muted hide-m">{s.volume} · {s.utilisation}% utilised</span>
               <ArrowRight size={16} className="faint" />
             </a>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Recommended for your programme" action={<a href="#/add-service">View all services <ArrowRight size={14} style={{ verticalAlign: -2 }} /></a>}>
+        <div className="grid cols-3">
+          {RECOMMENDED.map((r) => (
+            <div key={r.id} className="card photo-card">
+              <div className="ph" style={{ backgroundImage: `url(${BASE}img/${r.img})` }} role="img" aria-label={r.title} />
+              <div className="ph-body">
+                <h3>{r.title}</h3>
+                <p>{r.text}</p>
+                <a href={`#/add-service?service=${r.id}`}>Explore service <ArrowRight size={15} /></a>
+              </div>
+            </div>
           ))}
         </div>
       </Section>

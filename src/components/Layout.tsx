@@ -1,4 +1,4 @@
-import { BarChart3, BatteryFull, Boxes, FlaskConical, Home, LayoutGrid, LifeBuoy, MoreHorizontal, Receipt, Signal, Truck, Wifi } from 'lucide-react'
+import { BarChart3, BatteryFull, Boxes, FlaskConical, FolderOpen, Home, LayoutGrid, LifeBuoy, MoreHorizontal, Receipt, Signal, Truck, Wifi } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { isEmbedded } from '../lib/auth'
@@ -16,6 +16,7 @@ export const NAV = [
   { to: '/financials', label: 'Financials', icon: Receipt },
   { to: '/insights', label: 'Insights', icon: BarChart3 },
   { to: '/solutions', label: 'Solutions', icon: LayoutGrid },
+  { to: '/documents', label: 'Documents', icon: FolderOpen },
 ]
 
 export default function Layout() {

@@ -134,3 +134,32 @@ export function exportCsv(rows: Record<string, string | number>[], name: string)
   const csv = [keys.join(','), ...rows.map((r) => keys.map((k) => `"${String(r[k]).replace(/"/g, '""')}"`).join(','))].join('\n')
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = name; a.click(); URL.revokeObjectURL(a.href)
 }
+
+export async function downloadCapaPdf(c: import('../data/capas').Capa) {
+  const { jsPDF, autoTable } = await pdfLibs()
+  const doc = new jsPDF()
+  header(doc, 'CAPA report', c.id)
+  block(doc, 14, 38, 'Investigation', [c.title, `${c.type} | ${c.severity} | ${c.status}`, `Opened ${c.opened} | updated ${c.updated} | target close ${c.targetClose}`])
+  block(doc, 110, 38, 'Shipment', [`Job ${c.jobNumber} | ${c.orderRef}`, c.serviceLine, c.lane + (c.study ? ` | ${c.study}` : '')])
+  block(doc, 14, 64, 'Ownership', [`Owner ${c.owner}`, `Quality lead ${c.qualityLead}`])
+  const para = (title: string, text: string, y: number) => { doc.setFontSize(8); doc.setTextColor(107, 104, 128); doc.text(title.toUpperCase(), 14, y); doc.setFontSize(10); doc.setTextColor(28, 26, 51); const lines = doc.splitTextToSize(T(text), 182); doc.text(lines, 14, y + 6); return y + 6 + lines.length * 5 + 4 }
+  let y = para('Problem statement', c.problem, 82)
+  y = para('Immediate containment', c.containment.map((s, i) => `${i + 1}. ${s}`).join('\n'), y)
+  y = para('Investigation', c.investigation.map((s, i) => `${i + 1}. ${s}`).join('\n'), y)
+  y = para('Root cause', `${c.rootCause}\nCategory: ${c.rootCauseCategory}`, y)
+  const table = (title: string, rows: { action: string; owner: string; due: string; status: string }[]) => {
+    if (y > 240) { doc.addPage(); y = 20 }
+    doc.setFontSize(8); doc.setTextColor(107, 104, 128); doc.text(title.toUpperCase(), 14, y)
+    autoTable(doc, { startY: y + 3, head: [['Action', 'Owner', 'Due', 'Status']], body: rows.map((r) => [T(r.action), T(r.owner), r.due, r.status]), headStyles: { fillColor: PURPLE }, styles: { fontSize: 8.5 }, columnStyles: { 0: { cellWidth: 96 } } })
+    y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10
+  }
+  table('Corrective actions', c.corrective)
+  table('Preventive actions', c.preventive)
+  if (y > 220) { doc.addPage(); y = 20 }
+  y = para('Effectiveness check', `${c.effectiveness.criteria} Due ${c.effectiveness.due}.${c.effectiveness.result ? ` Result: ${c.effectiveness.result}.` : ''}`, y)
+  y = para('Impact assessment', `Product: ${c.productImpact}\nCustomer: ${c.customerImpact}\nRegulatory: ${c.regulatory}`, y)
+  if (y > 240) { doc.addPage(); y = 20 }
+  autoTable(doc, { startY: y, head: [['Sign-off', 'Name', 'Date']], body: c.signOff.map((s) => [s.role, s.name, s.date || 'Pending']), headStyles: { fillColor: PURPLE }, styles: { fontSize: 8.5 } })
+  footer(doc, 'Corrective and preventive action report generated from the Customer Workspace future-state vision. Illustrative content.')
+  doc.save(`${c.id}.pdf`)
+}

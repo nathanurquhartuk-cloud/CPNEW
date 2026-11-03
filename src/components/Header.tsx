@@ -16,6 +16,9 @@ function routeFor(q: string): string | null {
   if (/^(ORD|QUO)-/i.test(s)) return `/shipments?ref=${s.toUpperCase()}`
   if (/^AZ-/i.test(s)) return `/studies?study=${s.toUpperCase()}`
   if (/^site\s?\d+/i.test(s)) return `/inventory?site=${encodeURIComponent(s)}`
+  if (/^capa/i.test(s)) return `/documents?capa=${s.toUpperCase()}`
+  if (/capa|investigation|deviation/i.test(s)) return '/documents?kind=capa'
+  if (/document|library|proof of delivery|temperature of record/i.test(s)) return '/documents'
   if (/invoice|statement|financ/i.test(s)) return '/financials'
   if (/shipment|order|track|job|quote/i.test(s)) return '/shipments'
   if (/stud|site|protocol/i.test(s)) return '/studies'
