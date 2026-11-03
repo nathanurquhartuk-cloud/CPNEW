@@ -22,7 +22,7 @@ export const nextOrderRef = () => `ORD-2026-${String(seq++).padStart(3, '0')}`
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 export function parseWhen(text: string, after?: Date): { date: Date; assumedTime: boolean } | null {
-  const s = text.toLowerCase().replace(/[,.]/g, ' ')
+  const s = text.toLowerCase().replace(/\b([ap])\.?\s?m\.?(?=\s|$)/g, '$1m').replace(/o'clock/g, '').replace(/[,.]/g, ' ').replace(/\bhalf past (\d{1,2})\b/g, '$1:30').replace(/\bquarter past (\d{1,2})\b/g, '$1:15')
   const now = new Date()
   // time: 09:00, 9.30, 9am, 14h, "at 9"
   let h = -1, m = 0

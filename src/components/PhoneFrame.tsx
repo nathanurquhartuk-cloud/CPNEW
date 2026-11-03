@@ -32,7 +32,7 @@ export default function PhoneFrame({ onClose, path }: { onClose: () => void; pat
           <span className="btn-side vol1" /><span className="btn-side vol2" /><span className="btn-side vol3" /><span className="btn-side power" />
           <div className="screen">
             <div className="island" />
-            <iframe key={key} ref={ref} src={src} title="Mobile preview of the Customer Workspace" />
+            <iframe key={key} ref={ref} src={src} title="Mobile preview of the Customer Workspace" allow="microphone; autoplay" />
             <div className="home" />
           </div>
         </div>

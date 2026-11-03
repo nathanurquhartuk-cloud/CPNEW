@@ -1,4 +1,4 @@
-import { RotateCcw, Send, X } from 'lucide-react'
+import { Mic, MicOff, RotateCcw, Send, Square, Volume2, VolumeX, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { INVOICES } from '../data/invoices'
@@ -9,6 +9,7 @@ import { greeting, nowTime } from '../lib/dates'
 import { openActions, useNotifications } from '../lib/notifications'
 import { LOCALE_ACK, useSettings } from '../lib/settings'
 import { LOCALES, Locale, USER } from '../lib/user'
+import { Listener, canListen, canSpeak, listen, speak, stopSpeaking } from '../lib/voice'
 import { Order, addHours, allOrders, fmtTime, fmtWhen, nextOrderRef, parseWhen, useOrders } from '../lib/orders'
 import CoraMark from './CoraMark'
 import { ACCOUNT_TEAM, BILLING_TEAM, CONTROL_TOWER, SpecialistOptions, SpecialistTeam } from './SpecialistContact'
@@ -21,7 +22,7 @@ const opening = () => `${greeting()}, I'm Cora, your digital concierge.\n\nProac
 const SUGGESTIONS = ['Repeat shipment for Radiopharma from London to Porto Alegre', 'Explain the re-route', 'What needs my attention?', 'Track shipment 261396071CL', 'Which invoices are due?', 'Switch to German', 'Speak with a specialist']
 
 type Flow = { base: Order; step: 'pickup' | 'delivery' | 'packaging' | 'handling'; pickup?: Date; delivery?: Date; packaging?: string; handling?: string }
-const HANDLING: Record<string, string> = { 'white i': 'White I', 'white 1': 'White I', 'white': 'White I', 'yellow ii': 'Yellow II', 'yellow 2': 'Yellow II', 'yellow iii': 'Yellow III', 'yellow 3': 'Yellow III', 'yellow': 'Yellow II' }
+const HANDLING: Record<string, string> = { 'white i': 'White I', 'white 1': 'White I', 'white one': 'White I', 'white': 'White I', 'yellow ii': 'Yellow II', 'yellow 2': 'Yellow II', 'yellow two': 'Yellow II', 'yellow iii': 'Yellow III', 'yellow 3': 'Yellow III', 'yellow three': 'Yellow III', 'yellow': 'Yellow II' }
 
 export default function Cora() {
   const nav = useNavigate()
@@ -34,6 +35,47 @@ export default function Cora() {
   const seq = useRef(2)
   const flow = useRef<Flow | null>(null)
   const { created, addOrder } = useOrders()
+  // ----- voice -----
+  const locale = useSettings((s) => s.locale)
+  const [voice, setVoice] = useState(false)       // hands-free: speak replies and listen for the next answer
+  const [listening, setListening] = useState(false)
+  const [speaking, setSpeaking] = useState(false)
+  const listenerRef = useRef<Listener | null>(null)
+  const stopSpeakRef = useRef<() => void>(() => {})
+  const voiceRef = useRef(false)
+  const lastSpoken = useRef(0)
+  const micOk = canListen(), ttsOk = canSpeak()
+
+  const stopListening = () => { listenerRef.current?.stop(); listenerRef.current = null; setListening(false) }
+  const startListening = () => {
+    if (!micOk || listenerRef.current) return
+    stopSpeakRef.current(); setSpeaking(false)
+    const l = listen(locale, {
+      interim: (t) => setInput(t),
+      final: (t) => { setInput(''); reply(t) },
+      end: () => { listenerRef.current = null; setListening(false) },
+      error: (code) => { listenerRef.current = null; setListening(false); if (code === 'not-allowed' || code === 'service-not-allowed') push({ who: 'bot', text: 'I need permission to use your microphone. Allow it in the browser address bar and press the microphone again.' }) },
+    })
+    if (l) { listenerRef.current = l; setListening(true) }
+  }
+  // speak every new reply while voice is on, then listen again if Cora asked a question
+  useEffect(() => {
+    const last = msgs[msgs.length - 1]
+    if (!voiceRef.current || !last || last.who !== 'bot' || last.id === lastSpoken.current) return
+    lastSpoken.current = last.id
+    setSpeaking(true)
+    stopSpeakRef.current = speak(last.text, locale, () => { setSpeaking(false); if (voiceRef.current && (/\?\s*$/.test(last.text.trim()) || flow.current)) setTimeout(startListening, 250) })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [msgs])
+  useEffect(() => { voiceRef.current = voice; if (!voice) { stopSpeakRef.current(); stopSpeaking(); setSpeaking(false); stopListening() } }, [voice])
+  useEffect(() => () => { stopSpeaking(); listenerRef.current?.stop() }, [])
+  const toggleVoice = () => {
+    if (!voice) {
+      setVoice(true); voiceRef.current = true
+      const intro = flow.current ? 'Voice is on. Go ahead.' : 'Voice is on. Say "repeat shipment for Radiopharma from London to Porto Alegre" and I will take it from there, or ask me anything.'
+      push({ who: 'bot', text: intro })
+    } else setVoice(false)
+  }
 
   useEffect(() => {
     const on = (e: Event) => { setOpen(true); const p = (e as CustomEvent).detail?.prompt; if (p) setTimeout(() => reply(p), 50) }
@@ -160,6 +202,7 @@ export default function Cora() {
               <div className="n">Cora <span style={{ opacity: .7, fontWeight: 400 }}>· your digital concierge</span></div>
               <div className="s">● Online</div>
             </div>
+            {ttsOk && <button className="icon-btn" style={{ color: '#fff', background: voice ? 'rgba(255,255,255,.2)' : undefined }} title={voice ? 'Turn voice off' : 'Turn voice on: Cora speaks and listens'} aria-pressed={voice} onClick={toggleVoice}>{voice ? <Volume2 size={17} /> : <VolumeX size={17} />}</button>}
             <button className="icon-btn" style={{ color: '#fff' }} title="Start over" onClick={() => setMsgs([{ id: 1, who: 'bot', text: opening(), at: nowTime() }])}><RotateCcw size={17} /></button>
             <button className="icon-btn" style={{ color: '#fff' }} aria-label="Close" onClick={() => setOpen(false)}><X size={18} /></button>
           </div>
@@ -177,11 +220,19 @@ export default function Cora() {
             ))}
           </div>
           <div className="c-sugg">{SUGGESTIONS.map((sg) => <button key={sg} className="chip" onClick={() => reply(sg)}>{sg}</button>)}</div>
+          {(listening || speaking) && (
+            <div className="c-status">
+              <span className={`pulse${listening ? ' on' : ''}`} />
+              {listening ? 'Listening… speak now' : 'Cora is speaking'}
+              <button className="link" onClick={() => { if (listening) stopListening(); else { stopSpeakRef.current(); setSpeaking(false) } }}><Square size={11} /> stop</button>
+            </div>
+          )}
           <div className="c-input">
-            <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') send() }} placeholder="Ask Cora about a shipment, invoice, study…" aria-label="Message Cora" />
+            {micOk && <button className={`mic${listening ? ' on' : ''}`} onClick={() => (listening ? stopListening() : startListening())} aria-label={listening ? 'Stop listening' : 'Speak to Cora'} title={listening ? 'Stop listening' : 'Speak to Cora'}>{listening ? <MicOff size={17} /> : <Mic size={17} />}</button>}
+            <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') send() }} placeholder={listening ? 'Listening…' : 'Ask Cora, or press the microphone and speak'} aria-label="Message Cora" />
             <button onClick={send} aria-label="Send"><Send size={17} /></button>
           </div>
-          <div className="c-foot">Cora answers from your workspace data; verify critical information before acting.</div>
+          <div className="c-foot">{micOk ? 'Press the microphone to talk, or turn voice on to go hands-free. ' : 'Voice input needs Chrome, Edge or Safari. '}Cora answers from your workspace data; verify critical information before acting.</div>
         </div>
       )}
     </>
