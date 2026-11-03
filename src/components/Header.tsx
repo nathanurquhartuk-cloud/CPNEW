@@ -1,234 +1,139 @@
-import { useState } from 'react'
-import { Bell, AlertTriangle, RotateCw, FileText, CheckCircle, X } from 'lucide-react'
-import { useAuthStore } from '../stores'
+import { Bell, BookOpen, Check, ChevronDown, Contact, HelpCircle, LogOut, MapPin, Search, Settings, Shield, Smartphone, Trash2, Users, X } from 'lucide-react'
+import { FormEvent, useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../lib/auth'
+import { openCora, routeAlias, useNotifications } from '../lib/notifications'
+import { USER } from '../lib/user'
+import { cx } from './ui'
 
-export default function Header() {
-  const [showNotifications, setShowNotifications] = useState(false)
-  const { user } = useAuthStore()
+const BASE = import.meta.env.BASE_URL
 
-  const notifications = [
-    {
-      id: 1,
-      type: 'danger',
-      Icon: AlertTriangle,
-      title: 'Temperature Excursion Detected',
-      message: 'Order RD-2026-089 experienced brief temperature variance (8.2°C max). Shipment integrity verified.',
-      time: '2 minutes ago',
-      unread: true
-    },
-    {
-      id: 2,
-      type: 'warning',
-      Icon: RotateCw,
-      title: 'Delivery Address Redirect Required',
-      message: 'Order LL-2026-078 requires updated delivery confirmation. Action needed by Sep 28.',
-      time: '15 minutes ago',
-      unread: true
-    },
-    {
-      id: 3,
-      type: 'warning',
-      Icon: FileText,
-      title: 'Invoice Due Soon',
-      message: 'INV-2026-087 ($21,800) due Oct 26, 2026. Set up payment now.',
-      time: '1 hour ago',
-      unread: false
-    },
-    {
-      id: 4,
-      type: 'success',
-      Icon: CheckCircle,
-      title: 'Agreement Renewed',
-      message: 'Radiopharma Critical Tier renewed through Dec 31, 2027 with improved volume pricing.',
-      time: '3 hours ago',
-      unread: false
+function routeFor(q: string): string | null {
+  const s = q.trim()
+  if (!s) return null
+  if (/^\d{8,9}[A-Z]{0,2}$/i.test(s)) return `/shipments?job=${s.toUpperCase()}`
+  if (/^INV-|^CN-/i.test(s)) return `/financials?invoice=${s.toUpperCase()}`
+  if (/^(ORD|QUO)-/i.test(s)) return `/shipments?ref=${s.toUpperCase()}`
+  if (/^AZ-/i.test(s)) return `/studies?study=${s.toUpperCase()}`
+  if (/^site\s?\d+/i.test(s)) return `/inventory?site=${encodeURIComponent(s)}`
+  if (/invoice|statement|financ/i.test(s)) return '/financials'
+  if (/shipment|order|track|job|quote/i.test(s)) return '/shipments'
+  if (/stud|site|protocol/i.test(s)) return '/studies'
+  if (/inventor|stock|depot|lot/i.test(s)) return '/inventory'
+  if (/agreement|rate|solution|service/i.test(s)) return '/solutions'
+  if (/kpi|insight|analytic|report/i.test(s)) return '/insights'
+  if (/support|case|help|specialist/i.test(s)) return '/support'
+  return null
+}
+
+export default function Header({ onPhone, embedded }: { onPhone: () => void; embedded: boolean }) {
+  const nav = useNavigate()
+  const [q, setQ] = useState('')
+  const [bell, setBell] = useState(false)
+  const [menu, setMenu] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const { items, dismissed, dismiss, markRead, markAllRead, clearAll, restore } = useNotifications()
+  const logout = useAuth((s) => s.logout)
+  const unread = items.filter((n) => n.unread).length
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.key === '/' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k')) { e.preventDefault(); inputRef.current?.focus() }
     }
-  ]
+    const onOpen = () => setBell(true)
+    const onClick = (e: MouseEvent) => { if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) { setBell(false); setMenu(false) } }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('notifications:open', onOpen)
+    document.addEventListener('mousedown', onClick)
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('notifications:open', onOpen); document.removeEventListener('mousedown', onClick) }
+  }, [])
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    const r = routeFor(q)
+    if (r) nav(r); else openCora(q)
+    setQ('')
+  }
 
   return (
-    <header style={{
-      background: 'white',
-      borderBottom: '2px solid #461E96',
-      padding: '16px',
-      position: 'sticky',
-      top: 0,
-      zIndex: 1000,
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      gap: '16px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
-    }}>
-      {/* Logo */}
-      <div style={{ fontWeight: '900', fontSize: '20px', color: '#461E96', letterSpacing: '-0.8px' }}>
-        Cencora
+    <header className="header">
+      <div className="brand">
+        <img src={`${BASE}brand/cencora.png`} alt="Cencora" />
+        <span className="ws">Customer Workspace</span>
       </div>
-
-      {/* Right Section */}
-      <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-        {/* Notifications */}
+      <form className="search" onSubmit={submit} role="search">
+        <Search size={17} />
+        <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search shipments, studies, inventory and more…" aria-label="Search" />
+        <kbd>/</kbd>
+      </form>
+      <div className="actions" ref={wrapRef}>
+        {!embedded && (
+          <button className="mobile-toggle" onClick={onPhone} title="Preview the workspace on a phone"><Smartphone size={16} />Mobile view</button>
+        )}
         <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            style={{
-              position: 'relative',
-              width: '40px',
-              height: '40px',
-              borderRadius: '50%',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseOver={(e) => (e.currentTarget as HTMLButtonElement).style.background = '#f5f5f5'}
-            onMouseOut={(e) => (e.currentTarget as HTMLButtonElement).style.background = 'transparent'}
-            title="Notifications"
-            aria-label="Notifications"
-          >
-            <Bell size={20} color="#461E96" strokeWidth={1.5} />
-            <div style={{
-              position: 'absolute',
-              top: '-2px',
-              right: '-2px',
-              background: '#e74c3c',
-              color: 'white',
-              borderRadius: '50%',
-              width: '24px',
-              height: '24px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '12px',
-              fontWeight: '700',
-              border: '2px solid white'
-            }}>
-              3
-            </div>
+          <button className="icon-btn" aria-label="Notifications" aria-expanded={bell} onClick={() => { setBell(!bell); setMenu(false) }}>
+            <Bell size={19} />{unread > 0 && <span className="dot" />}
           </button>
-
-          {/* Notification Panel */}
-          {showNotifications && (
-            <>
-              <div
-                style={{
-                  position: 'fixed',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  background: 'rgba(0,0,0,0.3)',
-                  zIndex: 1100
-                }}
-                onClick={() => setShowNotifications(false)}
-              />
-              <div style={{
-                position: 'absolute',
-                top: '60px',
-                right: '16px',
-                width: '400px',
-                maxHeight: '500px',
-                background: 'white',
-                border: '1px solid #e0e0e0',
-                borderRadius: '8px',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-                zIndex: 1101
-              }}>
-                <div style={{ padding: '16px', borderBottom: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ fontSize: '14px', fontWeight: '700', margin: 0 }}>Notifications</h3>
-                  <button onClick={() => setShowNotifications(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-label="Close notifications">
-                    <X size={20} color="#999" strokeWidth={1.5} />
-                  </button>
-                </div>
-                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-                  {notifications.map((notif) => {
-                    const { Icon } = notif
-                    const iconColor = notif.type === 'danger' ? '#e74c3c' :
-                                     notif.type === 'warning' ? '#f39c12' :
-                                     notif.type === 'success' ? '#27ae60' :
-                                     '#3498db'
-                    const bgColor = notif.type === 'danger' ? 'rgba(231,76,60,0.1)' :
-                                   notif.type === 'warning' ? 'rgba(243,156,18,0.1)' :
-                                   notif.type === 'success' ? 'rgba(39,174,96,0.1)' :
-                                   'rgba(52,152,219,0.1)'
-                    return (
-                      <div
-                        key={notif.id}
-                        style={{
-                          padding: '12px 16px',
-                          borderBottom: '1px solid #e0e0e0',
-                          cursor: 'pointer',
-                          transition: 'background 0.2s ease',
-                          display: 'flex',
-                          gap: '12px',
-                          alignItems: 'flex-start',
-                          background: notif.unread ? 'rgba(70,30,150,0.03)' : 'transparent'
-                        }}
-                        onMouseOver={(e) => (e.currentTarget as HTMLDivElement).style.background = '#f5f5f5'}
-                        onMouseOut={(e) => (e.currentTarget as HTMLDivElement).style.background = notif.unread ? 'rgba(70,30,150,0.03)' : 'transparent'}
-                      >
-                        <div style={{
-                          flexShrink: 0,
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          background: bgColor
-                        }}>
-                          <Icon size={18} color={iconColor} strokeWidth={1.5} />
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: '600', fontSize: '13px', marginBottom: '4px', color: '#1a1a1a' }}>
-                            {notif.title}
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.4', marginBottom: '6px' }}>
-                            {notif.message}
-                          </div>
-                          <div style={{ fontSize: '11px', color: '#999' }}>
-                            {notif.time}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-                <div style={{ padding: '12px 16px', borderTop: '1px solid #e0e0e0', textAlign: 'center' }}>
-                  <a href="#" onClick={(e) => e.preventDefault()} style={{ color: '#461E96', fontSize: '12px', fontWeight: '600', textDecoration: 'none', cursor: 'pointer' }}>
-                    View all notifications →
-                  </a>
-                </div>
+          {bell && (
+            <div className="popover">
+              <div className="p-head">
+                <span>Notifications{unread > 0 && <span className="muted" style={{ fontWeight: 400 }}> · {unread} unread</span>}</span>
+                <span className="row" style={{ gap: 4 }}>
+                  {items.length > 0 && <button className="icon-btn" style={{ width: 32, height: 32 }} title="Mark all read" onClick={markAllRead}><Check size={15} /></button>}
+                  {items.length > 0 && <button className="icon-btn" style={{ width: 32, height: 32 }} title="Clear all" onClick={clearAll}><Trash2 size={15} /></button>}
+                </span>
               </div>
-            </>
+              <div className="p-body">
+                {items.length === 0 && (
+                  <div style={{ padding: 24, textAlign: 'center' }} className="muted">
+                    You are all caught up.{dismissed.length > 0 && <div style={{ marginTop: 8 }}><button className="link" onClick={restore}>Restore cleared notifications</button></div>}
+                  </div>
+                )}
+                {items.map((n) => (
+                  <div key={n.id} className={cx('notif', n.unread && 'unread')} onClick={() => { markRead(n.id); setBell(false); nav(routeAlias(n.to)) }}>
+                    <span className={cx('icon-wrap', n.tone === 'danger' ? 'bad' : n.tone === 'warning' ? 'warn' : n.tone === 'success' ? 'ok' : 'info')} style={{ width: 32, height: 32, borderRadius: 10 }}><span className="dot" style={{ width: 8, height: 8, borderRadius: 99, background: 'currentColor', display: 'block' }} /></span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="t">{n.title}</div>
+                      <div className="m">{n.message}</div>
+                      <div className="tiny faint" style={{ marginTop: 4 }}>{n.time} · <span className="purple">{n.cta}</span></div>
+                    </div>
+                    <button className="x" aria-label="Dismiss" onClick={(e) => { e.stopPropagation(); dismiss(n.id) }}><X size={14} /></button>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
-
-        {/* User Badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
-          <div>
-            <strong>Astra Zeneca</strong><br />
-            <small style={{ color: '#666' }}>Account Admin</small>
-          </div>
-          <div style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #461E96, #6B3BB3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontWeight: '700',
-            fontSize: '14px'
-          }}>
-            AZ
-          </div>
+        <div style={{ position: 'relative' }}>
+          <button className="avatar-btn" aria-label="Account menu" aria-expanded={menu} onClick={() => { setMenu(!menu); setBell(false) }}>
+            <span className="avatar">{USER.initials}</span>
+            <ChevronDown size={16} className="hide-m" />
+          </button>
+          {menu && (
+            <div className="popover" style={{ width: 300 }}>
+              <div className="p-head" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
+                <span>{USER.name}</span>
+                <span className="small muted" style={{ fontWeight: 400 }}>{USER.company} · {USER.role}</span>
+              </div>
+              <div style={{ padding: '6px 0' }}>
+                {[
+                  ['profile', 'My profile', Contact],
+                  ['contacts', 'Contacts and address book', MapPin],
+                  ['team', 'Team members and roles', Users],
+                  ['security', 'Security and sessions', Shield],
+                  ['settings', 'Settings and language', Settings],
+                ].map(([id, label, Icon]) => {
+                  const I = Icon as typeof Contact
+                  return (<button key={id as string} className="menu-item" onClick={() => { setMenu(false); nav(`/account?tab=${id}`) }}><I size={17} />{label as string}</button>)
+                })}
+                <button className="menu-item" onClick={() => { setMenu(false); nav('/support') }}><HelpCircle size={17} />Help and support</button>
+                <button className="menu-item" onClick={() => { setMenu(false); openCora('Show me around the workspace') }}><BookOpen size={17} />Take the tour with Cora</button>
+                <div style={{ borderTop: '1px solid var(--line)', margin: '6px 0' }} />
+                <button className="menu-item" onClick={() => { setMenu(false); logout(); nav('/login') }}><LogOut size={17} />Sign out</button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>

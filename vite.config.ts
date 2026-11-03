@@ -3,12 +3,7 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/cencora-portal/',
-  build: {
-    target: 'esnext',
-    minify: 'esbuild',
-  },
-  server: {
-    port: 3000,
-  },
+  base: '/CPNEW/',
+  build: { target: 'esnext', chunkSizeWarningLimit: 1500 },
+  server: { port: 3000 },
 })

@@ -1,42 +1,54 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { QueryClientProvider } from '@tanstack/react-query'
-import { queryClient } from './lib/query-client'
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
-import Dashboard from './pages/Dashboard'
-import Orders from './pages/Orders'
-import Invoices from './pages/Invoices'
-import Tracking from './pages/Tracking'
-import Agreements from './pages/Agreements'
-import PlaceOrder from './pages/PlaceOrder'
-import AddServiceLine from './pages/AddServiceLine'
+import { useAuth } from './lib/auth'
+import Account from './pages/Account'
+import AddSolution from './pages/AddSolution'
+import BookShipment from './pages/BookShipment'
+import Financials from './pages/Financials'
+import Insights from './pages/Insights'
+import Inventory from './pages/Inventory'
 import Login from './pages/Login'
+import More from './pages/More'
 import NotFound from './pages/NotFound'
-import { useAuthStore } from './stores'
+import Overview from './pages/Overview'
+import Shipments from './pages/Shipments'
+import Solutions from './pages/Solutions'
+import Studies from './pages/Studies'
+import Support from './pages/Support'
 
 export default function App() {
-  const { isAuthenticated } = useAuthStore()
-
+  const authed = useAuth((s) => s.isAuthenticated)
   return (
-    <QueryClientProvider client={queryClient}>
-      <Router basename="/cencora-portal/">
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          {isAuthenticated ? (
-            <Route element={<Layout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/orders" element={<Orders />} />
-              <Route path="/invoices" element={<Invoices />} />
-              <Route path="/tracking" element={<Tracking />} />
-              <Route path="/agreements" element={<Agreements />} />
-              <Route path="/place-order" element={<PlaceOrder />} />
-              <Route path="/add-service" element={<AddServiceLine />} />
-              <Route path="*" element={<NotFound />} />
-            </Route>
-          ) : (
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          )}
-        </Routes>
-      </Router>
-    </QueryClientProvider>
+    <HashRouter>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        {authed ? (
+          <Route element={<Layout />}>
+            <Route path="/" element={<Overview />} />
+            <Route path="/shipments" element={<Shipments />} />
+            <Route path="/shipments/live" element={<Shipments live />} />
+            <Route path="/orders" element={<Shipments />} />
+            <Route path="/tracking" element={<Shipments live />} />
+            <Route path="/studies" element={<Studies />} />
+            <Route path="/inventory" element={<Inventory />} />
+            <Route path="/financials" element={<Financials />} />
+            <Route path="/invoices" element={<Financials />} />
+            <Route path="/insights" element={<Insights />} />
+            <Route path="/analytics" element={<Insights />} />
+            <Route path="/solutions" element={<Solutions />} />
+            <Route path="/agreements" element={<Solutions />} />
+            <Route path="/support" element={<Support />} />
+            <Route path="/account" element={<Account />} />
+            <Route path="/book" element={<BookShipment />} />
+            <Route path="/place-order" element={<BookShipment />} />
+            <Route path="/add-service" element={<AddSolution />} />
+            <Route path="/more" element={<More />} />
+            <Route path="*" element={<NotFound />} />
+          </Route>
+        ) : (
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        )}
+      </Routes>
+    </HashRouter>
   )
 }
