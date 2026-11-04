@@ -45,7 +45,7 @@ export default function Overview() {
           <QuickAction icon={<Package size={28} strokeWidth={1.6} />} label="Book shipment" to="/book" />
           <QuickAction icon={<MapPin size={28} strokeWidth={1.6} />} label="Track shipment" to="/shipments/live" />
           <QuickAction icon={<FlaskConical size={28} strokeWidth={1.6} />} label="My studies" to="/studies" />
-          <QuickAction icon={<Wallet size={28} strokeWidth={1.6} />} label="My Financials" to="/financials" />
+          <QuickAction icon={<Wallet size={28} strokeWidth={1.6} />} label="My financials" to="/financials" />
         </div>
       </Section>
 
