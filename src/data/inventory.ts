@@ -76,7 +76,7 @@ export const INVENTORY = [
     expiry: "Jan 2027",
     onHand: 24,
     allocated: 0,
-    inTransit: 60,
+    inTransit: 0,
     minimum: 42,
     dailyUse: 6,
     health: "Low"
