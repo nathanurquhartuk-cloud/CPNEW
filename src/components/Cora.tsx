@@ -11,7 +11,7 @@ import { LOCALE_ACK, useSettings } from '../lib/settings'
 import { LOCALES, Locale, USER } from '../lib/user'
 import { Listener, canListen, canSpeak, listen, speak, stopSpeaking } from '../lib/voice'
 import { useLive } from '../lib/live'
-import { Order, addHours, allOrders, fmtTime, fmtWhen, nextOrderRef, parseWhen, useOrders } from '../lib/orders'
+import { OFFICE_HOURS, Order, addHours, allOrders, fmtTime, fmtWhen, inOfficeHours, nextOfficeSlot, nextOrderRef, parseWhen, useOrders, weekLater } from '../lib/orders'
 import CoraMark from './CoraMark'
 import { ACCOUNT_TEAM, BILLING_TEAM, CONTROL_TOWER, SpecialistOptions, SpecialistTeam } from './SpecialistContact'
 
@@ -25,7 +25,7 @@ const LIVE_TEXT = 'Live update: proactive shipment intelligence has just re-rout
 
 const SUGGESTIONS = ['Repeat shipment for Radiopharma from London to Porto Alegre', 'Explain the re-route', 'What needs my attention?', 'Track shipment 261396071CL', 'Which invoices are due?', 'Switch to German', 'Speak with a specialist']
 
-type Flow = { base: Order; step: 'pickup' | 'delivery' | 'packaging' | 'handling'; pickup?: Date; delivery?: Date; packaging?: string; handling?: string }
+type Flow = { base: Order; step: 'pickup' | 'delivery' | 'confirmDelivery' | 'packaging' | 'handling'; pickup?: Date; delivery?: Date; proposed?: Date; alternative?: Date; packaging?: string; handling?: string }
 const HANDLING: Record<string, string> = { 'white i': 'White I', 'white 1': 'White I', 'white one': 'White I', 'white': 'White I', 'yellow ii': 'Yellow II', 'yellow 2': 'Yellow II', 'yellow two': 'Yellow II', 'yellow iii': 'Yellow III', 'yellow 3': 'Yellow III', 'yellow three': 'Yellow III', 'yellow': 'Yellow II' }
 
 export default function Cora() {
@@ -86,8 +86,7 @@ export default function Cora() {
   const toggleVoice = () => {
     if (!voice) {
       setVoice(true); voiceRef.current = true
-      const intro = flow.current ? 'Voice is on. Go ahead.' : 'Voice is on. Say "repeat shipment for Radiopharma from London to Porto Alegre" and I will take it from there, or ask me anything.'
-      push({ who: 'bot', text: intro })
+      setTimeout(startListening, 100) // hands-free: just listen, no prompt
     } else setVoice(false)
   }
 
@@ -114,12 +113,31 @@ export default function Cora() {
         f.pickup = w.date; f.step = 'delivery'
         return { text: `Pick-up window set: ${fmtWhen(w.date)}–${fmtTime(addHours(w.date, 1))}${w.assumedTime ? ' (no time given, so I have assumed 09:00)' : ''}. Strict pick-up at ${fmtTime(w.date)} with a one-hour window after it.\n\nWhen do you need it delivered?` }
       }
+      const yesNo = (yes: string, no: string): Action[] => [{ label: yes, run: () => reply('Yes') }, { label: no, run: () => reply('No') }]
+      const packagingQ = (d: Date) => ({ text: `Delivery window set: ${fmtWhen(addHours(d, -1))}–${fmtTime(d)}, one hour before your ${fmtTime(d)} deadline.\n\nIs it your own packaging, or would you like us to supply packaging?`, actions: [{ label: 'My own packaging', run: () => reply('My own packaging') }, { label: 'Please supply packaging', run: () => reply('Please supply packaging') }] })
       if (f.step === 'delivery') {
+        if (/\b(a|one|1)\s+week|\bnext week\b|\bweek'?s?\s+time\b|\b(7|seven) days\b/.test(s)) {
+          const { monday, friday } = weekLater(f.pickup!)
+          f.proposed = monday; f.alternative = friday; f.step = 'confirmDelivery'
+          return { text: `For a week's time I suggest ${fmtWhen(monday)}, Monday morning, inside office hours. Is that appropriate, and does it not impact the product expiry? Say yes to proceed, or no and I will book ${fmtWhen(friday)} instead.`, actions: yesNo(`Yes, ${fmtWhen(monday)}`, `No, ${fmtWhen(friday)}`) }
+        }
         const w = parseWhen(q, f.pickup)
-        if (!w) return { text: 'Give me the delivery deadline as a date and time, for example "Fri 7 Nov 15:00".' }
+        if (!w) return { text: 'Give me the delivery deadline as a date and time, for example "Fri 7 Nov 15:00", or say "in a week".' }
         if (f.pickup && w.date.getTime() <= f.pickup.getTime()) return { text: `That is before the pick-up (${fmtWhen(f.pickup)}). When do you need it delivered?` }
+        if (!inOfficeHours(w.date)) {
+          const slot = nextOfficeSlot(w.date)
+          f.proposed = slot; f.alternative = w.date; f.step = 'confirmDelivery'
+          return { text: `${fmtWhen(w.date)} is outside office hours (${OFFICE_HOURS}). Shall I book ${fmtWhen(slot)} instead? Say yes to proceed with that, or no to keep ${fmtWhen(w.date)}.`, actions: yesNo(`Yes, ${fmtWhen(slot)}`, `No, keep ${fmtWhen(w.date)}`) }
+        }
         f.delivery = w.date; f.step = 'packaging'
-        return { text: `Delivery window set: ${fmtWhen(addHours(w.date, -1))}–${fmtTime(w.date)}, one hour before your ${fmtTime(w.date)} deadline.\n\nIs it your own packaging, or would you like us to supply packaging?`, actions: [{ label: 'My own packaging', run: () => reply('My own packaging') }, { label: 'Please supply packaging', run: () => reply('Please supply packaging') }] }
+        return packagingQ(w.date)
+      }
+      if (f.step === 'confirmDelivery') {
+        const yes = /\b(yes|yeah|yep|yup|proceed|ok|okay|fine|sure|go ahead|that works|confirm|correct)\b/.test(s)
+        const no = /\b(no|nope|nah|friday|instead|alternative|other|keep)\b/.test(s)
+        if (yes === no) return { text: `Say yes to book ${fmtWhen(f.proposed!)}, or no to book ${fmtWhen(f.alternative!)}.`, actions: yesNo(`Yes, ${fmtWhen(f.proposed!)}`, `No, ${fmtWhen(f.alternative!)}`) }
+        f.delivery = yes ? f.proposed! : f.alternative!; f.step = 'packaging'
+        return { ...packagingQ(f.delivery), text: `${yes ? 'Proceeding with' : 'Booking'} ${fmtWhen(f.delivery)}. ${packagingQ(f.delivery).text}` }
       }
       if (f.step === 'packaging') {
         if (/\b(own|ours|mine|my )/.test(s)) f.packaging = 'Customer packaging'
@@ -220,7 +238,7 @@ export default function Cora() {
               <div className="s">● Online</div>
             </div>
             {ttsOk && <button className="icon-btn" style={{ color: '#fff', background: voice ? 'rgba(255,255,255,.2)' : undefined }} title={voice ? 'Turn voice off' : 'Turn voice on: Cora speaks and listens'} aria-pressed={voice} onClick={toggleVoice}>{voice ? <Volume2 size={17} /> : <VolumeX size={17} />}</button>}
-            <button className="icon-btn" style={{ color: '#fff' }} title="Start over" onClick={() => { convo.current = false; setMsgs([openingMsg(!!firedAt)]) }}><RotateCcw size={17} /></button>
+            <button className="icon-btn" style={{ color: '#fff' }} title="Start over" onClick={() => { convo.current = false; flow.current = null; setMsgs([openingMsg(!!firedAt)]) }}><RotateCcw size={17} /></button>
             <button className="icon-btn" style={{ color: '#fff' }} aria-label="Close" onClick={() => setOpen(false)}><X size={18} /></button>
           </div>
           <div className="c-body" ref={bodyRef}>
@@ -240,7 +258,7 @@ export default function Cora() {
           {(listening || speaking) && (
             <div className="c-status">
               <span className={`pulse${listening ? ' on' : ''}`} />
-              {listening ? 'Listening… speak now' : 'Cora is speaking'}
+              {listening ? 'Listening…' : 'Cora is speaking'}
               <button className="link" onClick={() => { if (listening) stopListening(); else { stopSpeakRef.current(); setSpeaking(false) } }}><Square size={11} /> stop</button>
             </div>
           )}

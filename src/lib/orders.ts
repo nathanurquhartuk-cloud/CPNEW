@@ -56,3 +56,28 @@ export function parseWhen(text: string, after?: Date): { date: Date; assumedTime
 export const fmtWhen = (d: Date) => d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 export const fmtTime = (d: Date) => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 export const addHours = (d: Date, h: number) => new Date(d.getTime() + h * 3600000)
+
+// Office working hours for deliveries: 08:00–18:00, Monday to Friday
+export const OFFICE_HOURS = '08:00–18:00, Monday to Friday'
+export const inOfficeHours = (d: Date) => d.getDay() >= 1 && d.getDay() <= 5 && d.getHours() >= 8 && (d.getHours() < 18 || (d.getHours() === 18 && d.getMinutes() === 0))
+const at = (d: Date, h: number, m = 0) => { const x = new Date(d); x.setHours(h, m, 0, 0); return x }
+// Nearest slot inside office hours on or after d
+export const nextOfficeSlot = (d: Date) => {
+  let x = new Date(d)
+  if (x.getHours() > 18 || (x.getHours() === 18 && x.getMinutes() > 0)) { x.setDate(x.getDate() + 1); x = at(x, 8) }
+  else if (x.getHours() < 8) x = at(x, 8)
+  while (x.getDay() === 0 || x.getDay() === 6) { x.setDate(x.getDate() + 1); x = at(x, 8) }
+  return x
+}
+// "In a week": the Monday morning at 08:00 closest to a week after the pick-up (earlier on a tie, product expiry matters),
+// with the Friday at 17:00 before it as the alternative (or the Friday of that week if the earlier one is not after the pick-up).
+export const weekLater = (pickup: Date) => {
+  const target = new Date(pickup); target.setDate(target.getDate() + 7)
+  const back = (target.getDay() + 6) % 7            // days since the last Monday
+  const before = at(new Date(target.getFullYear(), target.getMonth(), target.getDate() - back), 8)
+  const after = new Date(before); after.setDate(after.getDate() + 7)
+  const monday = (target.getTime() - before.getTime()) <= (after.getTime() - target.getTime()) ? before : after
+  let friday = at(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() - 3), 17)
+  if (friday.getTime() <= pickup.getTime() + 3600000) friday = at(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 4), 17)
+  return { monday, friday }
+}
