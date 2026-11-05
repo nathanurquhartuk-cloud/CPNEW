@@ -20,6 +20,7 @@ export const useSettings = create<Settings>((set) => ({
 
 export const LOCALE_ACK: Record<Locale, string> = {
   'en-GB': 'Done. Your workspace language is set to English.',
+  'fr-FR': 'C\'est fait. La langue de votre espace de travail est désormais le français. La traduction complète de l\'interface arrive bientôt ; les formats de date et de nombre sont déjà adaptés.',
   'de-DE': 'Erledigt. Ihre Arbeitsbereichssprache ist jetzt Deutsch. Die vollständige Übersetzung der Oberfläche folgt; Datums- und Zahlenformate sind bereits umgestellt.',
   'es-ES': 'Hecho. El idioma de su espacio de trabajo es ahora el español. La traducción completa de la interfaz llegará pronto; los formatos de fecha y número ya están ajustados.',
   'pt-PT': 'Feito. O idioma do seu espaço de trabalho é agora o português. A tradução completa da interface chegará em breve; os formatos de data e número já estão ajustados.',

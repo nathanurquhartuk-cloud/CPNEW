@@ -241,7 +241,7 @@ function Settings() {
         ))}
       </div>
       <div className="card pad tint" style={{ marginTop: 14 }}>{LOCALE_ACK[locale]}</div>
-      <p className="muted small" style={{ marginTop: 10 }}>Interface translation for German, Spanish, Portuguese, Italian and Chinese is on the roadmap; date and number formats already follow your choice. You can also ask Cora: 'switch to German'.</p>
+      <p className="muted small" style={{ marginTop: 10 }}>Interface translation for French, German, Spanish, Portuguese, Italian and Chinese is on the roadmap; date and number formats already follow your choice. You can also ask Cora: 'switch to German'.</p>
 
       <Section title="Display">
         <Card>

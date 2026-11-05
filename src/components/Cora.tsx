@@ -138,9 +138,10 @@ export default function Cora() {
       return { text: `I will repeat ${base.id}: ${base.route}, ${base.serviceLine}, ${base.tier} tier${base.addOns?.length ? ` with ${base.addOns.join(', ')}` : ''}.\n\nFirst, what is the strict pick-up date and time?` }
     }
     // language
-    const loc = LOCALES.find((l) => s.includes(l.label.toLowerCase().split(' ')[0]) || s.includes(l.native.toLowerCase()) || (l.id === 'zh-CN' && /chinese|mandarin|中文/.test(s)))
-    if (loc && /language|switch|change|speak|翻译|sprache|idioma|lingua|中文/.test(s)) { setLocale(loc.id as Locale); return { text: LOCALE_ACK[loc.id as Locale], actions: [go('Language settings', '/account?tab=settings')] } }
-    if (/language|translate/.test(s)) return { text: 'I can switch the workspace language for you. Which would you like: English, German, Spanish, Portuguese, Italian or Chinese?', actions: LOCALES.map((l) => ({ label: l.native, run: () => reply(`Switch to ${l.label}`) })) }
+    const norm = (x: string) => x.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    const loc = LOCALES.find((l) => norm(s).includes(norm(l.label).split(' ')[0]) || norm(s).includes(norm(l.native)) || (l.id === 'zh-CN' && /chinese|mandarin|中文/.test(s)))
+    if (loc && /language|switch|change|speak|翻译|sprache|idioma|lingua|langue|中文/.test(s)) { setLocale(loc.id as Locale); return { text: LOCALE_ACK[loc.id as Locale], actions: [go('Language settings', '/account?tab=settings')] } }
+    if (/language|translate/.test(s)) return { text: 'I can switch the workspace language for you. Which would you like: English, French, German, Spanish, Portuguese, Italian or Chinese?', actions: LOCALES.map((l) => ({ label: l.native, run: () => reply(`Switch to ${l.label}`) })) }
     // shipment tracking
     const job = s.match(/\b(\d{8,9})(cl)?\b/)
     if (job && /track|where|status|shipment|job|eta/.test(s)) {

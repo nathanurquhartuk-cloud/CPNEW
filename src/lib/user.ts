@@ -6,9 +6,10 @@ export const USER = {
   get initials(): string { return `${this.first[0]}${this.last[0]}` },
 }
 
-export type Locale = 'en-GB' | 'de-DE' | 'es-ES' | 'pt-PT' | 'it-IT' | 'zh-CN'
+export type Locale = 'en-GB' | 'fr-FR' | 'de-DE' | 'es-ES' | 'pt-PT' | 'it-IT' | 'zh-CN'
 export const LOCALES: { id: Locale; label: string; native: string }[] = [
   { id: 'en-GB', label: 'English', native: 'English' },
+  { id: 'fr-FR', label: 'French', native: 'Français' },
   { id: 'de-DE', label: 'German', native: 'Deutsch' },
   { id: 'es-ES', label: 'Spanish', native: 'Español' },
   { id: 'pt-PT', label: 'Portuguese', native: 'Português' },
