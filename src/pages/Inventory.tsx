@@ -46,7 +46,7 @@ export default function Inventory() {
 
   return (
     <Page>
-      <PageHead title="Inventory" sub="Stock at depots and sites, with days of cover and replenishment status." tools={<Button to="/book?mode=direct&service=Clinical%20Supply%20Logistics" icon={<Package size={16} />}>Request replenishment</Button>} />
+      <PageHead title="Storage" sub="Stock held at depots and sites, with days of cover and replenishment status." tools={<Button to="/book?mode=direct&service=Clinical%20Supply%20Logistics" icon={<Package size={16} />}>Request replenishment</Button>} />
 
       <div className="grid cols-3">
         <Stat label="Lines tracked" value={INVENTORY.length} delta={`${INVENTORY.filter((l) => l.kind === 'Depot').length} depot · ${INVENTORY.filter((l) => l.kind === 'Site').length} site`} />

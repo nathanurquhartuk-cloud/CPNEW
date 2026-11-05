@@ -86,7 +86,7 @@ export default function Studies() {
                   <div className="meta ellipsis">{site.study} · {site.city}, {site.country} · {site.stockDays} days of stock · next resupply {site.nextResupply}</div>
                 </div>
                 <Pill tone={healthTone(site.health)} dot>{site.health}</Pill>
-                <Link to={`/inventory?site=${encodeURIComponent(site.id)}`} className="btn ghost sm hide-m">Inventory</Link>
+                <Link to={`/inventory?site=${encodeURIComponent(site.id)}`} className="btn ghost sm hide-m">Storage</Link>
               </div>
             ))}
           </div>
@@ -117,7 +117,7 @@ export default function Studies() {
                     <div className="tiny muted">{site.city}, {site.country} · {site.stockDays} days of stock · next resupply {site.nextResupply}</div>
                   </div>
                   <Pill tone={healthTone(site.health)} dot>{site.health}</Pill>
-                  <Link to={`/inventory?site=${encodeURIComponent(site.id)}`} className="btn ghost xs" onClick={close}>Inventory</Link>
+                  <Link to={`/inventory?site=${encodeURIComponent(site.id)}`} className="btn ghost xs" onClick={close}>Storage</Link>
                 </div>
               ))}
             </div>

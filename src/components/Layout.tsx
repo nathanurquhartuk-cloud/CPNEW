@@ -12,7 +12,7 @@ export const NAV = [
   { to: '/', label: 'Overview', icon: Home, end: true },
   { to: '/shipments', label: 'Shipments', icon: Truck },
   { to: '/studies', label: 'Studies', icon: FlaskConical },
-  { to: '/inventory', label: 'Inventory', icon: Boxes },
+  { to: '/inventory', label: 'Storage', icon: Boxes },
   { to: '/financials', label: 'Financials', icon: Receipt },
   { to: '/insights', label: 'Insights', icon: BarChart3 },
   { to: '/solutions', label: 'Solutions', icon: LayoutGrid },

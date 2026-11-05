@@ -4,7 +4,7 @@ import { Page, PageHead } from '../components/ui'
 import { useAuth } from '../lib/auth'
 
 const ITEMS = [
-  { to: '/inventory', label: 'Inventory', detail: 'Stock by site, lot and expiry', icon: Boxes },
+  { to: '/inventory', label: 'Storage', detail: 'Stock by site, lot and expiry', icon: Boxes },
   { to: '/insights', label: 'Insights', detail: 'KPIs, risk and benchmarking', icon: BarChart3 },
   { to: '/solutions', label: 'Solutions', detail: 'Your agreements, rates and more services', icon: LayoutGrid },
   { to: '/documents', label: 'Documents', detail: 'CAPA reports, agreements, records and invoices', icon: FolderOpen },

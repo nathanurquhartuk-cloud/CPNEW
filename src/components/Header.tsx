@@ -22,7 +22,7 @@ function routeFor(q: string): string | null {
   if (/invoice|statement|financ/i.test(s)) return '/financials'
   if (/shipment|order|track|job|quote/i.test(s)) return '/shipments'
   if (/stud|site|protocol/i.test(s)) return '/studies'
-  if (/inventor|stock|depot|lot/i.test(s)) return '/inventory'
+  if (/inventor|storage|stock|depot|lot/i.test(s)) return '/inventory'
   if (/agreement|rate|solution|service/i.test(s)) return '/solutions'
   if (/kpi|insight|analytic|report/i.test(s)) return '/insights'
   if (/support|case|help|specialist/i.test(s)) return '/support'
@@ -67,7 +67,7 @@ export default function Header({ onPhone, embedded }: { onPhone: () => void; emb
       </div>
       <form className="search" onSubmit={submit} role="search">
         <Search size={17} />
-        <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search shipments, studies, inventory and more…" aria-label="Search" />
+        <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search shipments, studies, storage and more…" aria-label="Search" />
         <kbd>/</kbd>
       </form>
       <div className="actions" ref={wrapRef}>

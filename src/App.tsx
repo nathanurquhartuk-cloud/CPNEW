@@ -32,6 +32,7 @@ export default function App() {
             <Route path="/tracking" element={<Shipments live />} />
             <Route path="/studies" element={<Studies />} />
             <Route path="/inventory" element={<Inventory />} />
+            <Route path="/storage" element={<Inventory />} />
             <Route path="/financials" element={<Financials />} />
             <Route path="/invoices" element={<Financials />} />
             <Route path="/insights" element={<Insights />} />
