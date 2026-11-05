@@ -124,7 +124,7 @@ export async function downloadPodPdf(job: Job) {
   header(doc, 'Proof of delivery', `Job ${job.number}`)
   block(doc, 14, 38, 'Consignee', [job.destination, `Delivered ${job.eta}`, 'Signed: receiving pharmacist'])
   block(doc, 110, 38, 'Shipment', [job.product, job.service, `Final temperature ${job.temp} (${job.tempRange})`])
-  autoTable(doc, { startY: 64, head: [['Leg', 'Provider', 'From', 'To', 'Status']], body: job.legs.map((l) => [l.id, l.provider, T(l.from), T(l.to), l.status]), headStyles: { fillColor: PURPLE }, styles: { fontSize: 8.5 } })
+  autoTable(doc, { startY: 64, head: [['Leg', 'Provider', 'From', 'To', 'Status']], body: job.legs.map((l) => [l.id, T(l.provider), T(l.from).replace(' | ', '\n'), T(l.to).replace(' | ', '\n'), l.status]), headStyles: { fillColor: PURPLE }, styles: { fontSize: 8.5 } })
   footer(doc, 'Illustrative proof of delivery generated from the Customer Workspace future-state vision.')
   doc.save(`${job.number}-proof-of-delivery.pdf`)
 }

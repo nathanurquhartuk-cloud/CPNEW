@@ -5,7 +5,8 @@ import { SpecialistOptions } from '../components/SpecialistContact'
 import { Button, Drawer, Empty, Expand, KV, Page, PageHead, Pill, Section, Segmented, statusTone } from '../components/ui'
 import { CLUSTERS, Cluster, WorldMap } from '../components/WorldMap'
 import { INVOICES } from '../data/invoices'
-import { JOBS } from '../data/jobs'
+import { JOBS, REROUTED_261408871CL } from '../data/jobs'
+import { useLive } from '../lib/live'
 import { capaForJob } from '../data/capas'
 import { Order as StoreOrder, allOrders, useOrders } from '../lib/orders'
 import { fmtDayMonthYear } from '../lib/dates'
@@ -141,7 +142,9 @@ export default function Shipments({ live = false }: { live?: boolean }) {
 }
 
 function ShipmentDrawer({ order: o, onClose }: { order: Order; onClose: () => void }) {
-  const j = jobFor(o) as Job | undefined
+  const firedAt = useLive((s) => s.firedAt)
+  const j0 = jobFor(o) as Job | undefined
+  const j = j0 && j0.number === '261408871CL' && firedAt ? ({ ...j0, ...REROUTED_261408871CL } as Job) : j0
   const inv = invoiceFor(o)
   const [spec, setSpec] = useState(false)
   const delivered = /delivered/i.test(o.status)
@@ -169,14 +172,19 @@ function ShipmentDrawer({ order: o, onClose }: { order: Order; onClose: () => vo
         <Expand title={`Tracking · leg ${j.leg} of ${j.legs.length}`} open={!delivered} right={<Pill tone={statusTone(j.deliveryStatus)}>{j.deliveryStatus}</Pill>}>
           <div className="muted small" style={{ marginBottom: 12 }}>ETA {j.eta} · {j.product}</div>
           <div className="timeline">
-            {j.legs.map((l, i) => (
-              <div key={l.id} className="tl-item">
-                <span className={`dot ${l.status === 'done' ? 'green' : l.status === 'active' ? '' : ''}`} style={l.status === 'pending' ? { background: 'var(--line)' } : undefined} />
-                <span className="when">{l.eta}</span>
-                <div className="t row" style={{ gap: 8 }}>{modeIcon(l.mode)}{l.provider} <span className="faint" style={{ fontWeight: 400 }}>· {l.id}</span></div>
-                <div className="d">{l.from} → {l.to}{l.issue ? <span className="red"> · {l.issue}</span> : ''}{i === j.leg - 1 && !delivered ? <span className="purple"> · current leg</span> : ''}</div>
-              </div>
-            ))}
+            {j.legs.map((l, i) => {
+              const [fromName, fromAddr] = l.from.split(' · '), [toName, toAddr] = l.to.split(' · ')
+              const current = i === j.leg - 1 && !delivered
+              return (
+                <div key={l.id} className="tl-item leg">
+                  <span className={`dot ${l.status === 'done' ? 'green' : ''}`} style={l.status === 'pending' ? { background: 'var(--line)' } : undefined} />
+                  <span className="when">{l.status === 'done' ? '' : l.status === 'current' ? 'ETA ' : 'Planned '}{l.eta}</span>
+                  <div className="t row" style={{ gap: 8 }}>{modeIcon(l.mode)}{l.provider} <span className="faint" style={{ fontWeight: 400 }}>· {l.id}</span>{l.issue ? <span className="red small" style={{ fontWeight: 500 }}>· {l.issue}</span> : null}{current ? <span className="purple small" style={{ fontWeight: 500 }}>· current leg</span> : null}</div>
+                  <div className="leg-stop"><span className="lbl">{l.from === l.to ? 'At' : 'From'}</span><span><span className="name">{fromName}</span>{fromAddr && <span className="addr">{fromAddr}</span>}</span></div>
+                  {l.from !== l.to && <div className="leg-stop"><span className="lbl">To</span><span><span className="name">{toName}</span>{toAddr && <span className="addr">{toAddr}</span>}</span></div>}
+                </div>
+              )
+            })}
           </div>
         </Expand>
       )}

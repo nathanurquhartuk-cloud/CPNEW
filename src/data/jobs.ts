@@ -1,6 +1,57 @@
 // Generated from the deployed portal bundle; dates are relative to today so the demo always reads as live.
 import { daysFrom, fmtMonDay, fmtNumeric, fmtUtc18, today } from '../lib/dates'
 
+// ----- Addresses used on the tracking legs (name · street address) -----
+const A = {
+  clinigenUk: 'Clinigen Healthcare Ltd · Pitcairn House, Crown Square, Centrum 100, Burton upon Trent DE14 2WW',
+  clinigenIe: 'Clinigen Ireland Ltd · Citywest Business Campus, Saggart, Co. Dublin D24',
+  azMacc: 'AstraZeneca Macclesfield · Charter Way, Hurdsfield Industrial Estate, Macclesfield SK10 2NA',
+  wcLondon: 'World Courier (UK) Ltd · Unit 3 Canada Road, Byfleet, Surrey KT14 7JL',
+  wcDublin: 'World Courier Ireland · Dublin Airport Logistics Park, Swords, Co. Dublin',
+  wcFrankfurt: 'World Courier Deutschland · CargoCity Süd, 60549 Frankfurt am Main',
+  wcFraDepot: 'World Courier Clinical Depot · CargoCity Süd, Gebäude 538, 60549 Frankfurt am Main',
+  wcBerlin: 'World Courier Berlin · Flughafen BER, Cargo Center, 12529 Schönefeld',
+  wcMumbai: 'World Courier India · Sahar Cargo Complex, Andheri East, Mumbai 400099',
+  wcSgDepot: 'World Courier Clinical Depot · Changi Airfreight Centre, Airport Cargo Road, Singapore 819462',
+  lhr: 'Heathrow Airport · Cargo Terminal, Shoreham Road East, Hounslow TW6 3AA',
+  dub: 'Dublin Airport · Cargo Terminal 1, Corballis Road, Swords, Co. Dublin',
+  fra: 'Frankfurt Airport · Lufthansa Cargo Center, Tor 25, Gebäude 451, 60546 Frankfurt am Main',
+  ber: 'Berlin Brandenburg Airport (BER) · Cargo Center, 12529 Schönefeld',
+  gru: 'São Paulo/Guarulhos (GRU) · TECA bonded cargo terminal, Rodovia Hélio Smidt s/n, Guarulhos SP 07190-100',
+  poa: 'Porto Alegre Salgado Filho (POA) · TECA, Av. Severo Dullius 90010, Porto Alegre RS 90200-310',
+  gig: 'Rio de Janeiro/Galeão (GIG) · TECA RIOgaleão, Av. Vinte de Janeiro s/n, Ilha do Governador, Rio de Janeiro RJ 21941-900',
+  bom: 'Mumbai CSMIA · Air Cargo Complex, Sahar, Andheri East, Mumbai 400099',
+  dornelles: 'Hospital Ernesto Dornelles · Nuclear Medicine, Av. Ipiranga 1801, Azenha, Porto Alegre RS 90160-092',
+  inca: 'INCA Hospital do Câncer I · Pharmacy, Praça Cruz Vermelha 23, Centro, Rio de Janeiro RJ 20230-130',
+  unicamp: 'Hospital de Clínicas da Unicamp · Rua Vital Brasil 251, Cidade Universitária, Campinas SP 13083-888',
+  einstein: 'Hospital Israelita Albert Einstein · Av. Albert Einstein 627, Morumbi, São Paulo SP 05652-900',
+  charite: 'Charité – Universitätsmedizin Berlin · Nuclear Medicine, Charitéplatz 1, 10117 Berlin',
+  chariteCvk: 'Charité Campus Virchow-Klinikum · Site 014 Pharmacy, Augustenburger Platz 1, 13353 Berlin',
+  tata: 'Tata Memorial Hospital · Dr. E Borges Road, Parel, Mumbai 400012',
+  marsden: 'The Royal Marsden · Downs Road, Sutton SM2 5PT',
+  guys: 'Guy’s Cancer Centre · Great Maze Pond, London SE1 9RT',
+  nccs: 'National Cancer Centre Singapore · 30 Hospital Boulevard, Singapore 168583',
+}
+const at = (day: number, time: string, tz: string) => `${fmtMonDay(daysFrom(day))} ${time} ${tz}`
+type LegStatus = 'done' | 'current' | 'pending'
+const leg = (id: string, mode: 'truck' | 'plane' | 'broker', provider: string, eta: string, from: string, to: string, status: LegStatus, issue?: string) => ({ id, mode, provider, eta, from, to, status, ...(issue ? { issue } : {}) })
+
+// Lane for job 261408871CL once proactive shipment intelligence has re-routed it via Berlin (see lib/live.ts)
+export const REROUTED_261408871CL = {
+  leg: 3,
+  eta: `${fmtMonDay(daysFrom(1))}, 10 AM GMT+2`,
+  etaFull: `${fmtNumeric(daysFrom(1))} 10:10:00 CEST`,
+  legs: [
+    leg('218788001M', 'truck', 'WC LONDON', at(0, '02:40', 'GMT'), A.azMacc, A.wcLondon, 'done'),
+    leg('218788002M', 'truck', 'WC LONDON', at(0, '06:05', 'GMT'), A.wcLondon, A.lhr, 'done'),
+    leg('218788011M', 'plane', 'BRITISH AIRWAYS · BA 992', at(0, '21:35', 'CEST'), A.lhr, A.ber, 'current', 'Re-routed via Berlin'),
+    leg('218788014M', 'truck', 'WC BERLIN · DEDICATED VEHICLE', at(1, '10:10', 'CEST'), A.ber, A.charite, 'pending'),
+  ],
+  issues: [
+    { kind: 'delay', title: 'Re-routed via Berlin', age: 'just now', body: 'Storm cell forecast over Frankfurt 22:00–04:00. Proactive shipment intelligence moved the shipment to BA 992 London → Berlin with a dedicated vehicle to Charité; ETA 10:10 CEST inside the 08:00–12:00 window, decay margin 5 h 50 m. No action needed.' },
+  ],
+}
+
 export const JOBS = [
   {
     number: "261396071CL",
@@ -44,56 +95,12 @@ export const JOBS = [
       }
     ],
     legs: [
-      {
-        id: "218767631M",
-        mode: "truck",
-        provider: "WC LONDON",
-        eta: `${fmtMonDay(daysFrom(2))}, 3 PM CDT`,
-        from: "UNIT 3 CANADA ROAD, BYFLEET\u2026",
-        to: "OXFORD HOUSE, 1 PLANE TREE\u2026",
-        status: "done",
-        issue: "Temperature excursion +1"
-      },
-      {
-        id: "218776012M",
-        mode: "truck",
-        provider: "WC LONDON",
-        eta: `${fmtMonDay(daysFrom(2))}, 3 PM CDT`,
-        from: "OXFORD HOUSE, 1 PLANE TREE CRESC\u2026",
-        to: "HEATHROW AIRPORT, LO\u2026",
-        status: "done",
-        issue: "Temperature excursion +1"
-      },
-      {
-        id: "218776014M",
-        mode: "plane",
-        provider: "LATAM AIRLINES GROUP",
-        eta: `${fmtMonDay(daysFrom(2))}, 3 PM CDT`,
-        from: "HEATHROW AIRPORT, LONDO\u2026",
-        to: "SN ROD HELIO SMIDT, SAO PAULO,\u2026",
-        status: "done",
-        issue: "Temperature excursion +1"
-      },
-      {
-        id: "218776015M",
-        mode: "broker",
-        provider: "CUSTOMER APPOINTED BROKER",
-        eta: `${fmtMonDay(daysFrom(2))}, 3 PM CDT`,
-        from: "SN ROD HELIO SMIDT, SAO PAU\u2026",
-        to: "SN ROD HELIO SMIDT, SAO PAU\u2026",
-        status: "current",
-        issue: "Temperature excursion +1"
-      },
-      {
-        id: "218776019M",
-        mode: "truck",
-        provider: "CUSTOMER APPOINTED BROKER",
-        eta: `${fmtMonDay(daysFrom(2))}, 3 PM CDT`,
-        from: "SN ROD HELIO SMIDT, SA\u2026",
-        to: "Av. Ipiranga, 1801, Azenha, Instituto Ceo\u2026",
-        status: "pending",
-        issue: "Temperature excursion +1"
-      }
+      leg('218767631M', 'truck', 'WC LONDON', at(-3, '14:30', 'GMT'), A.clinigenUk, A.wcLondon, 'done'),
+      leg('218776012M', 'truck', 'WC LONDON', at(-2, '06:10', 'GMT'), A.wcLondon, A.lhr, 'done', 'Temperature excursion'),
+      leg('218776014M', 'plane', 'LATAM AIRLINES GROUP · LA 8085', at(-1, '05:45', 'BRT'), A.lhr, A.gru, 'done', 'Temperature excursion'),
+      leg('218776015M', 'broker', 'CUSTOMER APPOINTED BROKER · CUSTOMS', at(1, '12:00', 'BRT'), A.gru, A.gru, 'current', 'Low battery'),
+      leg('218776017M', 'plane', 'LATAM AIRLINES GROUP · LA 3290', at(2, '09:20', 'BRT'), A.gru, A.poa, 'pending'),
+      leg('218776019M', 'truck', 'CUSTOMER APPOINTED BROKER', at(2, '15:00', 'BRT'), A.poa, A.dornelles, 'pending'),
     ]
   },
   {
@@ -126,43 +133,11 @@ export const JOBS = [
       }
     ],
     legs: [
-      {
-        id: "218790112M",
-        mode: "truck",
-        provider: "WC DUBLIN",
-        eta: `${fmtMonDay(daysFrom(2))}, 3 PM CDT`,
-        from: "CLINIGEN IRELAND, CITYWEST\u2026",
-        to: "DUBLIN AIRPORT, CARGO\u2026",
-        status: "done"
-      },
-      {
-        id: "218790115M",
-        mode: "plane",
-        provider: "LATAM AIRLINES GROUP",
-        eta: `${fmtMonDay(daysFrom(2))}, 3 PM CDT`,
-        from: "DUBLIN AIRPORT, CARGO\u2026",
-        to: "GIG, RIO DE JANEIRO\u2026",
-        status: "current",
-        issue: "Low battery"
-      },
-      {
-        id: "218790118M",
-        mode: "broker",
-        provider: "CUSTOMER APPOINTED BROKER",
-        eta: `${fmtMonDay(daysFrom(2))}, 3 PM CDT`,
-        from: "GIG, RIO DE JANEIRO\u2026",
-        to: "GIG, RIO DE JANEIRO\u2026",
-        status: "pending"
-      },
-      {
-        id: "218790121M",
-        mode: "truck",
-        provider: "CUSTOMER APPOINTED BROKER",
-        eta: `${fmtMonDay(daysFrom(2))}, 3 PM CDT`,
-        from: "GIG, RIO DE JANEIRO\u2026",
-        to: "Pra\u00e7a da Cruz Vermelha, 23, Centro\u2026",
-        status: "pending"
-      }
+      leg('218790112M', 'truck', 'WC DUBLIN', at(-1, '16:40', 'GMT'), A.clinigenIe, A.dub, 'done'),
+      leg('218790114M', 'plane', 'AER LINGUS CARGO · EI 178', at(-1, '21:05', 'GMT'), A.dub, A.lhr, 'done'),
+      leg('218790115M', 'plane', 'BRITISH AIRWAYS · BA 249', at(0, '07:30', 'BRT'), A.lhr, A.gig, 'current', 'Low battery'),
+      leg('218790118M', 'broker', 'CUSTOMER APPOINTED BROKER · CUSTOMS', at(2, '10:00', 'BRT'), A.gig, A.gig, 'pending'),
+      leg('218790121M', 'truck', 'CUSTOMER APPOINTED BROKER', at(2, '15:00', 'BRT'), A.gig, A.inca, 'pending'),
     ]
   },
   {
@@ -174,7 +149,7 @@ export const JOBS = [
     members: 2,
     eta: `${fmtMonDay(daysFrom(2))}, 2 PM GMT-3`,
     etaFull: `${fmtNumeric(daysFrom(2))} 14:00:00 CDT`,
-    leg: 3,
+    leg: 4,
     deliveryStatus: "At Risk",
     temp: "8\u00b0C",
     battery: "64%",
@@ -201,44 +176,11 @@ export const JOBS = [
       }
     ],
     legs: [
-      {
-        id: "218781203M",
-        mode: "truck",
-        provider: "WC LONDON",
-        eta: `${fmtMonDay(daysFrom(2))}, 2 PM CDT`,
-        from: "UNIT 3 CANADA ROAD, BYFLEET\u2026",
-        to: "HEATHROW AIRPORT, LO\u2026",
-        status: "done"
-      },
-      {
-        id: "218781207M",
-        mode: "plane",
-        provider: "LATAM AIRLINES GROUP",
-        eta: `${fmtMonDay(daysFrom(2))}, 2 PM CDT`,
-        from: "HEATHROW AIRPORT, LONDO\u2026",
-        to: "SN ROD HELIO SMIDT, SAO PAULO,\u2026",
-        status: "done",
-        issue: "Temperature excursion"
-      },
-      {
-        id: "218781210M",
-        mode: "broker",
-        provider: "CUSTOMER APPOINTED BROKER",
-        eta: `${fmtMonDay(daysFrom(2))}, 2 PM CDT`,
-        from: "SN ROD HELIO SMIDT, SAO PAU\u2026",
-        to: "SN ROD HELIO SMIDT, SAO PAU\u2026",
-        status: "current",
-        issue: "Delay risk"
-      },
-      {
-        id: "218781214M",
-        mode: "truck",
-        provider: "CUSTOMER APPOINTED BROKER",
-        eta: `${fmtMonDay(daysFrom(2))}, 2 PM CDT`,
-        from: "SN ROD HELIO SMIDT, SA\u2026",
-        to: "Rua Vital Brasil, 251, Cidade Universit\u00e1ria\u2026",
-        status: "pending"
-      }
+      leg('218781203M', 'truck', 'WC LONDON', at(-3, '15:10', 'GMT'), A.clinigenUk, A.wcLondon, 'done'),
+      leg('218781205M', 'truck', 'WC LONDON', at(-2, '05:50', 'GMT'), A.wcLondon, A.lhr, 'done'),
+      leg('218781207M', 'plane', 'LATAM AIRLINES GROUP · LA 8085', at(-1, '05:40', 'BRT'), A.lhr, A.gru, 'done', 'Temperature excursion'),
+      leg('218781210M', 'broker', 'CUSTOMER APPOINTED BROKER · CUSTOMS', at(1, '18:00', 'BRT'), A.gru, A.gru, 'current', 'Delay risk'),
+      leg('218781214M', 'truck', 'CUSTOMER APPOINTED BROKER', at(2, '14:00', 'BRT'), A.gru, A.unicamp, 'pending'),
     ]
   },
   {
@@ -250,7 +192,7 @@ export const JOBS = [
     members: 2,
     eta: `${fmtMonDay(daysFrom(3))}, 11 AM GMT-3`,
     etaFull: `${fmtNumeric(daysFrom(3))} 11:00:00 CDT`,
-    leg: 2,
+    leg: 3,
     deliveryStatus: "On Time",
     temp: "4\u00b0C",
     battery: "82%",
@@ -277,43 +219,11 @@ export const JOBS = [
       }
     ],
     legs: [
-      {
-        id: "218783301M",
-        mode: "truck",
-        provider: "WC LONDON",
-        eta: `${fmtMonDay(daysFrom(3))}, 11 AM CDT`,
-        from: "UNIT 3 CANADA ROAD, BYFLEET\u2026",
-        to: "HEATHROW AIRPORT, LO\u2026",
-        status: "done",
-        issue: "Temperature excursion +1"
-      },
-      {
-        id: "218783305M",
-        mode: "plane",
-        provider: "LATAM AIRLINES GROUP",
-        eta: `${fmtMonDay(daysFrom(3))}, 11 AM CDT`,
-        from: "HEATHROW AIRPORT, LONDO\u2026",
-        to: "SN ROD HELIO SMIDT, SAO PAULO,\u2026",
-        status: "current"
-      },
-      {
-        id: "218783308M",
-        mode: "broker",
-        provider: "CUSTOMER APPOINTED BROKER",
-        eta: `${fmtMonDay(daysFrom(3))}, 11 AM CDT`,
-        from: "SN ROD HELIO SMIDT, SAO PAU\u2026",
-        to: "SN ROD HELIO SMIDT, SAO PAU\u2026",
-        status: "pending"
-      },
-      {
-        id: "218783311M",
-        mode: "truck",
-        provider: "CUSTOMER APPOINTED BROKER",
-        eta: `${fmtMonDay(daysFrom(3))}, 11 AM CDT`,
-        from: "SN ROD HELIO SMIDT, SA\u2026",
-        to: "Av. Albert Einstein, 627, Morumbi\u2026",
-        status: "pending"
-      }
+      leg('218783301M', 'truck', 'WC LONDON', at(-1, '13:20', 'GMT'), A.clinigenUk, A.wcLondon, 'done', 'Temperature excursion'),
+      leg('218783303M', 'truck', 'WC LONDON', at(0, '04:30', 'GMT'), A.wcLondon, A.lhr, 'done'),
+      leg('218783305M', 'plane', 'LATAM AIRLINES GROUP · LA 8085', at(1, '05:40', 'BRT'), A.lhr, A.gru, 'current', 'Temperature excursion'),
+      leg('218783308M', 'broker', 'CUSTOMER APPOINTED BROKER · CUSTOMS', at(2, '12:00', 'BRT'), A.gru, A.gru, 'pending'),
+      leg('218783311M', 'truck', 'CUSTOMER APPOINTED BROKER', at(3, '11:00', 'BRT'), A.gru, A.einstein, 'pending'),
     ]
   },
   {
@@ -325,7 +235,7 @@ export const JOBS = [
     members: 3,
     eta: `${fmtMonDay(daysFrom(1))}, 9 AM GMT+2`,
     etaFull: `${fmtNumeric(daysFrom(1))} 09:00:00 CEST`,
-    leg: 2,
+    leg: 3,
     deliveryStatus: "On Time",
     temp: "-19\u00b0C",
     battery: "77%",
@@ -345,34 +255,10 @@ export const JOBS = [
       }
     ],
     legs: [
-      {
-        id: "218788001M",
-        mode: "truck",
-        provider: "WC LONDON",
-        eta: `${fmtMonDay(daysFrom(1))}, 9 AM CEST`,
-        from: "MACCLESFIELD, SK10 2NA\u2026",
-        to: "HEATHROW AIRPORT, LO\u2026",
-        status: "done"
-      },
-      {
-        id: "218788004M",
-        mode: "plane",
-        provider: "LUFTHANSA CARGO",
-        eta: `${fmtMonDay(daysFrom(1))}, 9 AM CEST`,
-        from: "HEATHROW AIRPORT, LONDO\u2026",
-        to: "FRANKFURT AIRPORT, CARGO CITY\u2026",
-        status: "current",
-        issue: "Delay risk"
-      },
-      {
-        id: "218788007M",
-        mode: "truck",
-        provider: "WC FRANKFURT",
-        eta: `${fmtMonDay(daysFrom(1))}, 9 AM CEST`,
-        from: "FRANKFURT AIRPORT, CARGO CITY\u2026",
-        to: "Charit\u00e9platz 1, 10117 Berlin\u2026",
-        status: "pending"
-      }
+      leg('218788001M', 'truck', 'WC LONDON', at(0, '02:40', 'GMT'), A.azMacc, A.wcLondon, 'done'),
+      leg('218788002M', 'truck', 'WC LONDON', at(0, '06:05', 'GMT'), A.wcLondon, A.lhr, 'done'),
+      leg('218788004M', 'plane', 'LUFTHANSA CARGO · LH 8341', at(0, '21:40', 'CEST'), A.lhr, A.fra, 'current', 'Delay risk'),
+      leg('218788007M', 'truck', 'WC FRANKFURT', at(1, '09:00', 'CEST'), A.fra, A.charite, 'pending'),
     ]
   },
   {
@@ -384,7 +270,7 @@ export const JOBS = [
     members: 2,
     eta: `${fmtMonDay(daysFrom(3))}, 6 PM GMT+5:30`,
     etaFull: `${fmtNumeric(daysFrom(3))} 18:00:00 IST`,
-    leg: 2,
+    leg: 3,
     deliveryStatus: "On Time",
     temp: "6\u00b0C",
     battery: "58%",
@@ -404,43 +290,11 @@ export const JOBS = [
       }
     ],
     legs: [
-      {
-        id: "218791501M",
-        mode: "truck",
-        provider: "WC LONDON",
-        eta: `${fmtMonDay(daysFrom(3))}, 6 PM IST`,
-        from: "UNIT 3 CANADA ROAD, BYFLEET\u2026",
-        to: "HEATHROW AIRPORT, LO\u2026",
-        status: "done"
-      },
-      {
-        id: "218791504M",
-        mode: "plane",
-        provider: "BRITISH AIRWAYS",
-        eta: `${fmtMonDay(daysFrom(3))}, 6 PM IST`,
-        from: "HEATHROW AIRPORT, LONDO\u2026",
-        to: "MUMBAI AIRPORT, BOM\u2026",
-        status: "current",
-        issue: "Low battery"
-      },
-      {
-        id: "218791507M",
-        mode: "broker",
-        provider: "WC MUMBAI",
-        eta: `${fmtMonDay(daysFrom(3))}, 6 PM IST`,
-        from: "MUMBAI AIRPORT, BOM\u2026",
-        to: "MUMBAI AIRPORT, BOM\u2026",
-        status: "pending"
-      },
-      {
-        id: "218791510M",
-        mode: "truck",
-        provider: "WC MUMBAI",
-        eta: `${fmtMonDay(daysFrom(3))}, 6 PM IST`,
-        from: "MUMBAI AIRPORT, BOM\u2026",
-        to: "Dr. E Borges Road, Parel\u2026",
-        status: "pending"
-      }
+      leg('218791501M', 'truck', 'WC LONDON', at(-1, '12:45', 'GMT'), A.clinigenUk, A.wcLondon, 'done'),
+      leg('218791503M', 'truck', 'WC LONDON', at(0, '05:20', 'GMT'), A.wcLondon, A.lhr, 'done'),
+      leg('218791504M', 'plane', 'BRITISH AIRWAYS · BA 139', at(1, '01:30', 'IST'), A.lhr, A.bom, 'current', 'Low battery'),
+      leg('218791507M', 'broker', 'WC MUMBAI · CUSTOMS', at(2, '16:00', 'IST'), A.bom, A.bom, 'pending'),
+      leg('218791510M', 'truck', 'WC MUMBAI', at(3, '18:00', 'IST'), A.wcMumbai, A.tata, 'pending'),
     ]
   },
   {
@@ -452,7 +306,7 @@ export const JOBS = [
     members: 3,
     eta: `${fmtMonDay(daysFrom(-24))}, 10 AM GMT+1`,
     etaFull: `${fmtNumeric(daysFrom(-24))} 10:00:00 BST`,
-    leg: 3,
+    leg: 2,
     deliveryStatus: "Delivered",
     temp: "-21\u00b0C",
     battery: "\u2014",
@@ -465,24 +319,8 @@ export const JOBS = [
     isOpenAlert: false,
     issues: [],
     legs: [
-      {
-        id: "218760001M",
-        mode: "truck",
-        provider: "WC LONDON",
-        eta: `${fmtMonDay(daysFrom(-24))}, 10 AM BST`,
-        from: "MACCLESFIELD, SK10 2NA\u2026",
-        to: "WC LONDON HUB, BYFLEET\u2026",
-        status: "done"
-      },
-      {
-        id: "218760004M",
-        mode: "truck",
-        provider: "WC LONDON",
-        eta: `${fmtMonDay(daysFrom(-24))}, 10 AM BST`,
-        from: "WC LONDON HUB, BYFLEET\u2026",
-        to: "Downs Road, Sutton SM2 5PT\u2026",
-        status: "done"
-      }
+      leg('218760001M', 'truck', 'WC LONDON', at(-24, '03:50', 'BST'), A.azMacc, A.wcLondon, 'done'),
+      leg('218760004M', 'truck', 'WC LONDON', at(-24, '09:40', 'BST'), A.wcLondon, A.marsden, 'done'),
     ]
   },
   {
@@ -507,24 +345,8 @@ export const JOBS = [
     isOpenAlert: false,
     issues: [],
     legs: [
-      {
-        id: "218799001M",
-        mode: "truck",
-        provider: "WC LONDON",
-        eta: `${fmtMonDay(daysFrom(1))}, 7 AM BST`,
-        from: "MACCLESFIELD, SK10 2NA\u2026",
-        to: "WC LONDON HUB, BYFLEET\u2026",
-        status: "pending"
-      },
-      {
-        id: "218799004M",
-        mode: "truck",
-        provider: "WC LONDON",
-        eta: `${fmtMonDay(daysFrom(1))}, 7 AM BST`,
-        from: "WC LONDON HUB, BYFLEET\u2026",
-        to: "Great Maze Pond, London SE1 9RT\u2026",
-        status: "pending"
-      }
+      leg('218799001M', 'truck', 'WC LONDON', at(1, '02:30', 'BST'), A.azMacc, A.wcLondon, 'pending'),
+      leg('218799004M', 'truck', 'WC LONDON', at(1, '07:00', 'BST'), A.wcLondon, A.guys, 'pending'),
     ]
   },
   {
@@ -549,24 +371,8 @@ export const JOBS = [
     isOpenAlert: false,
     issues: [],
     legs: [
-      {
-        id: "218801001M",
-        mode: "truck",
-        provider: "WC FRANKFURT DEPOT",
-        eta: `${fmtMonDay(daysFrom(1))}, 7 AM CEST`,
-        from: "WC CLINICAL DEPOT, CARGO CITY S\u00dcD\u2026",
-        to: "Charit\u00e9platz 1, 10117 Berlin\u2026",
-        status: "current"
-      },
-      {
-        id: "218801004M",
-        mode: "truck",
-        provider: "WC BERLIN",
-        eta: `${fmtMonDay(daysFrom(1))}, 7 AM CEST`,
-        from: "Charit\u00e9platz 1, 10117 Berlin\u2026",
-        to: "SITE 014 PHARMACY \u00b7 CVK CAMPUS\u2026",
-        status: "pending"
-      }
+      leg('218801001M', 'truck', 'WC FRANKFURT DEPOT', at(0, '22:30', 'CEST'), A.wcFraDepot, A.wcBerlin, 'current'),
+      leg('218801004M', 'truck', 'WC BERLIN', at(1, '07:00', 'CEST'), A.wcBerlin, A.chariteCvk, 'pending'),
     ]
   },
   {
@@ -591,15 +397,7 @@ export const JOBS = [
     isOpenAlert: false,
     issues: [],
     legs: [
-      {
-        id: "218803001M",
-        mode: "truck",
-        provider: "WC SINGAPORE DEPOT",
-        eta: `${fmtMonDay(daysFrom(2))}, 11 AM SGT`,
-        from: "WC CLINICAL DEPOT, CHANGI\u2026",
-        to: "30 Hospital Boulevard, Singapore 168583\u2026",
-        status: "pending"
-      }
+      leg('218803001M', 'truck', 'WC SINGAPORE DEPOT', at(2, '11:00', 'SGT'), A.wcSgDepot, A.nccs, 'pending'),
     ]
   }
 ]
