@@ -25,16 +25,18 @@ interface State {
   markAllRead: () => void
   clearAll: () => void
   restore: () => void
+  add: (n: Notification) => void
 }
 
 export const useNotifications = create<State>((set) => ({
-  items: INITIAL_NOTIFICATIONS as Notification[],
+  items: (INITIAL_NOTIFICATIONS as Notification[]).filter((n) => n.kind !== 'reroute'),
   dismissed: [],
   dismiss: (id) => set((s) => { const n = s.items.find((x) => x.id === id); return { items: s.items.filter((x) => x.id !== id), dismissed: n ? [...s.dismissed, n] : s.dismissed } }),
   markRead: (id) => set((s) => ({ items: s.items.map((x) => (x.id === id ? { ...x, unread: false } : x)) })),
   markAllRead: () => set((s) => ({ items: s.items.map((x) => ({ ...x, unread: false })) })),
   clearAll: () => set((s) => ({ items: [], dismissed: [...s.dismissed, ...s.items] })),
-  restore: () => set(() => ({ items: INITIAL_NOTIFICATIONS as Notification[], dismissed: [] })),
+  restore: () => set((s) => ({ items: [...s.dismissed.filter((n) => n.kind === 'reroute'), ...(INITIAL_NOTIFICATIONS as Notification[]).filter((n) => n.kind !== 'reroute')], dismissed: [] })),
+  add: (n) => set((s) => ({ items: [n, ...s.items.filter((x) => x.id !== n.id)] })),
 }))
 
 // Cross-component events (kept from the original portal so deep links keep working)

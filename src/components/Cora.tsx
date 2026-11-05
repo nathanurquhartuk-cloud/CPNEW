@@ -10,6 +10,7 @@ import { openActions, useNotifications } from '../lib/notifications'
 import { LOCALE_ACK, useSettings } from '../lib/settings'
 import { LOCALES, Locale, USER } from '../lib/user'
 import { Listener, canListen, canSpeak, listen, speak, stopSpeaking } from '../lib/voice'
+import { useLive } from '../lib/live'
 import { Order, addHours, allOrders, fmtTime, fmtWhen, nextOrderRef, parseWhen, useOrders } from '../lib/orders'
 import CoraMark from './CoraMark'
 import { ACCOUNT_TEAM, BILLING_TEAM, CONTROL_TOWER, SpecialistOptions, SpecialistTeam } from './SpecialistContact'
@@ -17,7 +18,10 @@ import { ACCOUNT_TEAM, BILLING_TEAM, CONTROL_TOWER, SpecialistOptions, Specialis
 type Action = { label: string; to?: string; run?: () => void }
 type Msg = { id: number; who: 'bot' | 'user'; text: string; actions?: Action[]; specialist?: SpecialistTeam; at: string }
 
-const opening = () => `${greeting()}, I'm Cora, your digital concierge.\n\nProactive shipment intelligence has re-routed job 261408871CL via Berlin ahead of a storm cell over Frankfurt; no action is needed. Also open today: a temperature excursion on job 261396071CL and two high-risk departures on Thursday. How can I help today?`
+const opening = (fired: boolean) => fired
+  ? `${greeting()}, I'm Cora, your digital concierge.\n\nProactive shipment intelligence has re-routed job 261408871CL via Berlin ahead of a storm cell over Frankfurt; no action is needed. Also open today: a temperature excursion on job 261396071CL and two high-risk departures on Thursday. How can I help today?`
+  : `${greeting()}, I'm Cora, your digital concierge.\n\nOpen today: a temperature excursion on job 261396071CL and two high-risk departures on Thursday. Proactive shipment intelligence is watching all 847 active shipments. How can I help today?`
+const LIVE_TEXT = 'Live update: proactive shipment intelligence has just re-routed job 261408871CL via Berlin ahead of a storm cell over Frankfurt. The delivery window and a 5 h 50 m decay margin are protected and Charité has been informed; no action is needed from you.'
 
 const SUGGESTIONS = ['Repeat shipment for Radiopharma from London to Porto Alegre', 'Explain the re-route', 'What needs my attention?', 'Track shipment 261396071CL', 'Which invoices are due?', 'Switch to German', 'Speak with a specialist']
 
@@ -28,7 +32,17 @@ export default function Cora() {
   const nav = useNavigate()
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
-  const [msgs, setMsgs] = useState<Msg[]>([{ id: 1, who: 'bot', text: opening(), at: nowTime(), actions: [{ label: 'Explain the re-route', run: () => reply('Explain the re-route') }, { label: 'Show what needs attention', run: () => reply('What needs my attention?') }] }])
+  const firedAt = useLive((s) => s.firedAt)
+  const openingMsg = (fired: boolean): Msg => ({ id: 1, who: 'bot', text: opening(fired), at: nowTime(), actions: [...(fired ? [{ label: 'Explain the re-route', run: () => reply('Explain the re-route') }] : []), { label: 'Show what needs attention', run: () => reply('What needs my attention?') }] })
+  const [msgs, setMsgs] = useState<Msg[]>([openingMsg(false)])
+  const convo = useRef(false) // has the user said anything yet?
+  // the re-route arrives in Cora only once it has happened
+  useEffect(() => {
+    if (!firedAt) return
+    if (convo.current) push({ who: 'bot', text: LIVE_TEXT, actions: [{ label: 'Explain the re-route', run: () => reply('Explain the re-route') }, { label: 'See the intervention', to: '/?intervention=1' }] })
+    else setMsgs([openingMsg(true)])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firedAt])
   const bodyRef = useRef<HTMLDivElement>(null)
   const items = useNotifications((s) => s.items)
   const setLocale = useSettings((s) => s.setLocale)
@@ -151,6 +165,7 @@ export default function Cora() {
       if (o) return { text: `${o.id} (${o.serviceLine}, ${o.tier} tier) is ${o.status.toLowerCase()}: ${o.when}. ${o.note}`, actions: [go('Open the shipment', `/shipments?ref=${o.id}`)] }
       return { text: `I cannot find job ${job[1]} on your account. Check the number or ask your account team.`, actions: [go('All shipments', '/shipments')] }
     }
+    if (/re-?route|berlin|storm|frankfurt/.test(s) && !useLive.getState().firedAt) return { text: 'No re-route is in progress right now. Proactive shipment intelligence is monitoring all 847 active shipments and will intervene, and tell you, the moment a lane is at risk.', actions: [go('Live map', '/shipments/live')] }
     if (/re-?route|berlin|storm|frankfurt/.test(s)) return { text: 'Job 261408871CL (Radiopharma, Critical tier) was due to cross Frankfurt by road tonight. The storm cell forecast over FRA from 22:00 raised the excursion risk from 34 to 71, so the control tower reviewed Berlin direct, Amsterdam and a hold at FRA, and selected Berlin direct on BA 992 inside your Critical tier agreement. The delivery window is protected with a 5 h 50 m decay margin and Charité has been informed. Nothing is needed from you.', actions: [go('See the intervention', '/?intervention=1'), { label: 'Speak with the monitoring specialist', run: () => reply('Speak with the monitoring specialist') }] }
     if (/attention|needs me|decision|today|open items|what.*do/.test(s)) {
       const a = items.filter((n) => n.needsAction)
@@ -180,6 +195,7 @@ export default function Cora() {
   }
 
   function reply(q: string) {
+    convo.current = true
     push({ who: 'user', text: q })
     const a = answer(q)
     setTimeout(() => push({ who: 'bot', ...a }), 350)
@@ -204,7 +220,7 @@ export default function Cora() {
               <div className="s">● Online</div>
             </div>
             {ttsOk && <button className="icon-btn" style={{ color: '#fff', background: voice ? 'rgba(255,255,255,.2)' : undefined }} title={voice ? 'Turn voice off' : 'Turn voice on: Cora speaks and listens'} aria-pressed={voice} onClick={toggleVoice}>{voice ? <Volume2 size={17} /> : <VolumeX size={17} />}</button>}
-            <button className="icon-btn" style={{ color: '#fff' }} title="Start over" onClick={() => setMsgs([{ id: 1, who: 'bot', text: opening(), at: nowTime() }])}><RotateCcw size={17} /></button>
+            <button className="icon-btn" style={{ color: '#fff' }} title="Start over" onClick={() => { convo.current = false; setMsgs([openingMsg(!!firedAt)]) }}><RotateCcw size={17} /></button>
             <button className="icon-btn" style={{ color: '#fff' }} aria-label="Close" onClick={() => setOpen(false)}><X size={18} /></button>
           </div>
           <div className="c-body" ref={bodyRef}>
@@ -220,7 +236,7 @@ export default function Cora() {
               </div>
             ))}
           </div>
-          <div className="c-sugg">{SUGGESTIONS.map((sg) => <button key={sg} className="chip" onClick={() => reply(sg)}>{sg}</button>)}</div>
+          <div className="c-sugg">{SUGGESTIONS.filter((sg) => firedAt || sg !== 'Explain the re-route').map((sg) => <button key={sg} className="chip" onClick={() => reply(sg)}>{sg}</button>)}</div>
           {(listening || speaking) && (
             <div className="c-status">
               <span className={`pulse${listening ? ' on' : ''}`} />

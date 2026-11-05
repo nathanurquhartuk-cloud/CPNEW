@@ -6,7 +6,8 @@ export default function PhoneFrame({ onClose, path }: { onClose: () => void; pat
   const [scale, setScale] = useState(1)
   const [key, setKey] = useState(0)
   const ref = useRef<HTMLIFrameElement>(null)
-  const src = `${window.location.origin}${window.location.pathname}?embedded=1#${path}`
+  const fuse = new URLSearchParams(window.location.search).get('reroute') // keep a rehearsal fuse when previewing on the phone
+  const src = `${window.location.origin}${window.location.pathname}?embedded=1${fuse !== null ? `&reroute=${encodeURIComponent(fuse)}` : ''}#${path}`
 
   useEffect(() => {
     const fit = () => setScale(Math.min(1, (window.innerHeight - 120) / 884, (window.innerWidth - 40) / 430))

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { openCora, routeAlias, useNotifications } from '../lib/notifications'
 import { USER } from '../lib/user'
+import { useLive } from '../lib/live'
 import { cx } from './ui'
 
 const BASE = import.meta.env.BASE_URL
@@ -39,6 +40,9 @@ export default function Header({ onPhone, embedded }: { onPhone: () => void; emb
   const { items, dismissed, dismiss, markRead, markAllRead, clearAll, restore } = useNotifications()
   const logout = useAuth((s) => s.logout)
   const unread = items.filter((n) => n.unread).length
+  const firedAt = useLive((s) => s.firedAt)
+  const [ring, setRing] = useState(false)
+  useEffect(() => { if (!firedAt) return; setRing(true); const id = setTimeout(() => setRing(false), 6000); return () => clearTimeout(id) }, [firedAt])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -75,7 +79,7 @@ export default function Header({ onPhone, embedded }: { onPhone: () => void; emb
           <button className="mobile-toggle" onClick={onPhone} title="Preview the workspace on a phone"><Smartphone size={16} />Mobile view</button>
         )}
         <div style={{ position: 'relative' }}>
-          <button className="icon-btn" aria-label="Notifications" aria-expanded={bell} onClick={() => { setBell(!bell); setMenu(false) }}>
+          <button className={cx('icon-btn', ring && 'ring')} aria-label="Notifications" aria-expanded={bell} onClick={() => { setBell(!bell); setMenu(false) }}>
             <Bell size={19} />{unread > 0 && <span className="dot" />}
           </button>
           {bell && (

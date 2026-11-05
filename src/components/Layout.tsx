@@ -2,6 +2,8 @@ import { BarChart3, BatteryFull, Boxes, FlaskConical, FolderOpen, Home, LayoutGr
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { isEmbedded } from '../lib/auth'
+import { armAudio, rerouteDelayMs, useLive } from '../lib/live'
+import LiveToast from './LiveToast'
 import { useNotifications } from '../lib/notifications'
 import Cora from './Cora'
 import Header from './Header'
@@ -25,8 +27,12 @@ export default function Layout() {
   const loc = useLocation()
   const open = useNotifications((s) => s.items.filter((n) => n.needsAction).length)
   const embedded = isEmbedded()
+  const fire = useLive((s) => s.fire)
+  const firedAt = useLive((s) => s.firedAt)
 
   useEffect(() => { window.scrollTo({ top: 0 }) }, [loc.pathname])
+  useEffect(() => { if (firedAt) return; const id = setTimeout(fire, rerouteDelayMs()); return () => clearTimeout(id) }, [fire, firedAt])
+  useEffect(() => armAudio(), [])
   useEffect(() => { if (embedded) document.body.classList.add('embedded') }, [embedded])
   useEffect(() => {
     const on = () => setActions(true)
@@ -70,6 +76,7 @@ export default function Layout() {
         <NavLink to="/more" className={({ isActive }) => (isActive ? 'active' : '')}><MoreHorizontal size={20} strokeWidth={1.9} /><span>More</span></NavLink>
       </nav>
       <Cora />
+      <LiveToast />
       {actions && <ActionsPanel onClose={() => setActions(false)} />}
       {phone && !embedded && <PhoneFrame onClose={() => setPhone(false)} path={loc.pathname + loc.search} />}
     </div>

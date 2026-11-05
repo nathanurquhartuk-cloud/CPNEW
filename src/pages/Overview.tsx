@@ -7,6 +7,8 @@ import { SCHEDULES } from '../data/schedules'
 import { fmtLong, greeting, today } from '../lib/dates'
 import { openActions, useNotifications } from '../lib/notifications'
 import { USER } from '../lib/user'
+import { useLive } from '../lib/live'
+import { Pill } from '../components/ui'
 
 const BASE = import.meta.env.BASE_URL
 export const RECOMMENDED: { id: string; title: string; text: string; img: string }[] = [
@@ -20,6 +22,8 @@ export default function Overview() {
   const items = useNotifications((s) => s.items)
   const needs = items.filter((n) => n.needsAction).length
   const handled = items.filter((n) => !n.needsAction && (n.kind === 'reroute' || n.kind === 'excursion' || n.kind === 'risk')).length
+  const firedAt = useLive((s) => s.firedAt)
+  const justFired = !!firedAt && Date.now() - firedAt < 10 * 60000
 
   return (
     <Page>
@@ -35,6 +39,7 @@ export default function Overview() {
           <div className="title">Cora's daily update</div>
           <div className="text">
             {needs > 0 ? `${needs} item${needs > 1 ? 's' : ''} need${needs > 1 ? '' : 's'} your decision.` : 'Nothing needs your decision.'} We are managing {handled} exception{handled === 1 ? '' : 's'}. Everything else is progressing as planned.
+            {firedAt && <span className="live-line"><Pill tone="ok" dot>New</Pill> Job 261408871CL re-routed via Berlin ahead of a storm cell over Frankfurt; no action needed.</span>}
           </div>
         </div>
         <Button onClick={openActions} icon={<ArrowRight size={16} />}>Review my actions</Button>
@@ -49,9 +54,11 @@ export default function Overview() {
         </div>
       </Section>
 
-      <Section title="Handled for you today">
-        <LaneReroute defaultOpen={params.get('intervention') === '1'} />
-      </Section>
+      {firedAt && (
+        <Section title="Handled for you today" action={justFired ? <Pill tone="ok" dot>Live · just now</Pill> : undefined}>
+          <div className="appear"><LaneReroute defaultOpen={params.get('intervention') === '1' || justFired} firedAt={firedAt} /></div>
+        </Section>
+      )}
 
       <Section title="Your solutions" action={<a href="#/solutions">All solutions <ArrowRight size={14} style={{ verticalAlign: -2 }} /></a>}>
         <div className="card" style={{ overflow: 'hidden' }}>

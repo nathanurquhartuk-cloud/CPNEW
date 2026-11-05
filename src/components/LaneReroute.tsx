@@ -1,18 +1,19 @@
 import { ArrowRight, CheckCircle2, ChevronDown, Radio } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { minutesAgo } from '../lib/dates'
+import { minutesBefore } from '../lib/live'
 import { Button, Pill, cx } from './ui'
 import { SpecialistOptions } from './SpecialistContact'
 import { WorldMap, proj } from './WorldMap'
 
-const TIMELINE = [
-  { t: minutesAgo(62), title: 'Risk detected', d: 'Storm cell forecast over Frankfurt 22:00–04:00 threatens the FRA → Berlin road leg; excursion risk rose from 34 to 71.', tone: 'red' },
-  { t: minutesAgo(58), title: 'Specialist intercepted', d: 'Control tower reviewed alternatives (Berlin direct, Amsterdam, hold at FRA) against the delivery window and decay margin.', tone: '' },
-  { t: minutesAgo(45), title: 'Shipment re-routed', d: 'New lane via Berlin direct on BA 992 confirmed within your Critical tier agreement; dedicated vehicle assigned; Charité informed.', tone: '' },
-  { t: minutesAgo(38), title: 'Risk resolved', d: 'Revised lane secured with the delivery window and a 5 h 50 m decay margin protected. ZoomLogi lane and ETA updated.', tone: 'green' },
+const timeline = (at: number) => [
+  { t: minutesBefore(at, 24), title: 'Risk detected', d: 'Storm cell forecast over Frankfurt 22:00–04:00 threatens the FRA → Berlin road leg; excursion risk rose from 34 to 71.', tone: 'red' },
+  { t: minutesBefore(at, 20), title: 'Specialist intercepted', d: 'Control tower reviewed alternatives (Berlin direct, Amsterdam, hold at FRA) against the delivery window and decay margin.', tone: '' },
+  { t: minutesBefore(at, 7), title: 'Shipment re-routed', d: 'New lane via Berlin direct on BA 992 confirmed within your Critical tier agreement; dedicated vehicle assigned; Charité informed.', tone: '' },
+  { t: minutesBefore(at, 0), title: 'Risk resolved', d: 'Revised lane secured with the delivery window and a 5 h 50 m decay margin protected. ZoomLogi lane and ETA updated.', tone: 'green' },
 ]
 
-export default function LaneReroute({ defaultOpen = false, onSpecialist }: { defaultOpen?: boolean; onSpecialist?: () => void }) {
+export default function LaneReroute({ defaultOpen = false, onSpecialist, firedAt }: { defaultOpen?: boolean; onSpecialist?: () => void; firedAt?: number }) {
+  const TIMELINE = timeline(firedAt ?? Date.now())
   const [open, setOpen] = useState(defaultOpen)
   const [risk, setRisk] = useState(71)
   const [spec, setSpec] = useState(false)
